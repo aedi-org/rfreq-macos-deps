@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - sdrpp
+          - sdrpp-exp
 
     steps:
       - uses: actions/checkout@v4
