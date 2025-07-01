@@ -16,8 +16,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import aedi.target.base as base
 from aedi.state import BuildState
+from aedi.target import base
 
 
 class DfuUtilTarget(base.ConfigureMakeDependencyTarget):

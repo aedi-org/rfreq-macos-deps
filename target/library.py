@@ -21,8 +21,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import aedi.target.base as base
 from aedi.state import BuildState
+from aedi.target import base
 
 
 class Ad9361Target(base.CMakeSharedDependencyTarget):
