@@ -189,9 +189,9 @@ class FftwTarget(base.CMakeSharedDependencyTarget):
         }
 
         def update_dirs(line: str):
-            for prefix in replacements:
+            for prefix, replacement in replacements.items():
                 if line.startswith(prefix):
-                    return prefix + replacements[prefix]
+                    return prefix + replacement
 
             return line
 
@@ -454,9 +454,9 @@ class RtlSdrTarget(base.CMakeDependencyTarget):
         }
 
         def update_dirs(line: str):
-            for prefix in replacements:
+            for prefix, replacement in replacements.items():
                 if line.startswith(prefix):
-                    return prefix + replacements[prefix]
+                    return prefix + replacement
 
             return line
 
