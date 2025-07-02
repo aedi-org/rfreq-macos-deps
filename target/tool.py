@@ -21,8 +21,8 @@ from aedi.target import base
 
 
 class DfuUtilTarget(base.ConfigureMakeDependencyTarget):
-    def __init__(self, name='dfu-util'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('dfu-util')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -34,8 +34,8 @@ class DfuUtilTarget(base.ConfigureMakeDependencyTarget):
 
 
 class OrcTarget(base.MesonSharedTarget):
-    def __init__(self, name='orc'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('orc')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -56,8 +56,8 @@ class OrcTarget(base.MesonSharedTarget):
 
 
 class Rtl433Target(base.CMakeDependencyTarget):
-    def __init__(self, name='rtl433'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('rtl433')
 
     def prepare_source(self, state: BuildState):
         state.download_source(

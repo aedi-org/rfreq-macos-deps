@@ -26,8 +26,8 @@ from aedi.target import base
 
 
 class Ad9361Target(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='ad9361'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('ad9361')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -43,8 +43,8 @@ class Ad9361Target(base.CMakeSharedDependencyTarget):
 
 
 class AirspyTarget(base.CMakeDependencyTarget):
-    def __init__(self, name='airspy'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('airspy')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -53,8 +53,8 @@ class AirspyTarget(base.CMakeDependencyTarget):
 
 
 class AirspyHFTarget(base.CMakeDependencyTarget):
-    def __init__(self, name='airspyhf'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('airspyhf')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -63,8 +63,8 @@ class AirspyHFTarget(base.CMakeDependencyTarget):
 
 
 class BladeRFTarget(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='bladerf'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('bladerf')
         self.src_root = 'host'
 
     def prepare_source(self, state: BuildState):
@@ -115,8 +115,8 @@ class BladeRFTarget(base.CMakeSharedDependencyTarget):
 
 
 class Codec2Target(base.CMakeStaticDependencyTarget):
-    def __init__(self, name='codec2'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('codec2')
         self.multi_platform = False
 
     def prepare_source(self, state: BuildState):
@@ -130,8 +130,8 @@ class Codec2Target(base.CMakeStaticDependencyTarget):
 
 
 class CorrectTarget(base.CMakeDependencyTarget):
-    def __init__(self, name='correct'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('correct')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -150,8 +150,8 @@ class CorrectTarget(base.CMakeDependencyTarget):
 
 
 class FftwTarget(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='fftw'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('fftw')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -200,8 +200,8 @@ class FftwTarget(base.CMakeSharedDependencyTarget):
 
 
 class FobosTarget(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='fobos'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('fobos')
 
     def prepare_source(self, state: BuildState):
         # Unlike the corresponding tag, the following commit is the proper version 2.3.2
@@ -223,8 +223,8 @@ class FobosTarget(base.CMakeSharedDependencyTarget):
 
 
 class FobosAgileTarget(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='fobos-agile'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('fobos-agile')
         self.project_name = 'fobos_sdr'
 
     def prepare_source(self, state: BuildState):
@@ -247,8 +247,8 @@ class FobosAgileTarget(base.CMakeSharedDependencyTarget):
 
 
 class GlfwTarget(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='glfw'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('glfw')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -267,8 +267,8 @@ class GlfwTarget(base.CMakeSharedDependencyTarget):
 class HackRFTarget(base.CMakeSharedDependencyTarget):
     _VERSION = '2024.02.1'
 
-    def __init__(self, name='hackrf'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('hackrf')
         self.src_root = 'host'
 
     def prepare_source(self, state: BuildState):
@@ -283,8 +283,8 @@ class HackRFTarget(base.CMakeSharedDependencyTarget):
 
 
 class IioTarget(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='iio'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('iio')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -307,8 +307,8 @@ class IioTarget(base.CMakeSharedDependencyTarget):
 
 
 class LimeSuiteTarget(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='limesuite'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('limesuite')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -326,8 +326,8 @@ class LimeSuiteTarget(base.CMakeSharedDependencyTarget):
 
 
 class MakoTarget(base.BuildTarget):
-    def __init__(self, name='mako'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('mako')
         self.multi_platform = False
 
     def prepare_source(self, state: BuildState):
@@ -343,8 +343,8 @@ class MakoTarget(base.BuildTarget):
 
 
 class MarkupSafeTarget(base.BuildTarget):
-    def __init__(self, name='markupsafe'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('markupsafe')
         self.multi_platform = False
 
     def prepare_source(self, state: BuildState):
@@ -364,8 +364,8 @@ class MarkupSafeTarget(base.BuildTarget):
 
 
 class PerseusTarget(base.ConfigureMakeSharedDependencyTarget):
-    def __init__(self, name='perseus'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('perseus')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -389,8 +389,8 @@ class PerseusTarget(base.ConfigureMakeSharedDependencyTarget):
 
 
 class PortAudioTarget(base.CMakeDependencyTarget):
-    def __init__(self, name='portaudio'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('portaudio')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -403,8 +403,8 @@ class PortAudioTarget(base.CMakeDependencyTarget):
 
 
 class RfnmAudioTarget(base.CMakeDependencyTarget):
-    def __init__(self, name='rfnm'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('rfnm')
         self.prerequisites = ('spdlog',)
 
     def prepare_source(self, state: BuildState):
@@ -420,8 +420,8 @@ class RfnmAudioTarget(base.CMakeDependencyTarget):
 
 
 class RtAudioTarget(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='rtaudio'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('rtaudio')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -434,8 +434,8 @@ class RtAudioTarget(base.CMakeSharedDependencyTarget):
 
 
 class RtlSdrTarget(base.CMakeDependencyTarget):
-    def __init__(self, name='rtlsdr'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('rtlsdr')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -467,8 +467,8 @@ class RtlSdrTarget(base.CMakeDependencyTarget):
 class SDRplayTarget(base.Target):
     VERSION = '3.15.1'
 
-    def __init__(self, name='sdrplay'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('sdrplay')
 
     def build(self, state: BuildState):
         state.download_source(
@@ -496,8 +496,8 @@ class SDRplayTarget(base.Target):
 
 
 class SpdLogTarget(base.CMakeStaticDependencyTarget):
-    def __init__(self, name='spdlog'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('spdlog')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -513,8 +513,8 @@ class SpdLogTarget(base.CMakeStaticDependencyTarget):
 
 
 class UsbTarget(base.ConfigureMakeSharedDependencyTarget):
-    def __init__(self, name='usb'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('usb')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -526,8 +526,8 @@ class UsbTarget(base.ConfigureMakeSharedDependencyTarget):
 
 
 class VolkTarget(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='volk'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('volk')
         self.prerequisites = ('mako', 'markupsafe')
 
     def prepare_source(self, state: BuildState):
@@ -558,8 +558,8 @@ class VolkTarget(base.CMakeSharedDependencyTarget):
 
 
 class ZstdTarget(base.CMakeSharedDependencyTarget):
-    def __init__(self, name='zstd'):
-        super().__init__(name)
+    def __init__(self):
+        super().__init__('zstd')
         self.src_root = 'build/cmake'
 
     def prepare_source(self, state: BuildState):
