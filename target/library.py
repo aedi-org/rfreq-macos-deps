@@ -384,7 +384,7 @@ class PerseusTarget(base.ConfigureMakeSharedDependencyTarget):
         os.rename(state.install_path / 'bin/perseustest_dyn', test_exe)
 
     @staticmethod
-    def _process_pkg_config(pcfile: Path, line: str) -> str:
+    def _process_pkg_config(_, line: str) -> str:
         return line.replace('/usr/include', '${includedir}')
 
 
