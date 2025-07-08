@@ -54,6 +54,7 @@ def targets():
         ZstdTarget(),
 
         # Tools
+        ArmGnuToolchainNoneEabiTarget(),
         DfuUtilTarget(),
         OrcTarget(),
         Rtl433Target(),

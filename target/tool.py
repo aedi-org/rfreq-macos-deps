@@ -16,8 +16,42 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import shutil
+
 from aedi.state import BuildState
 from aedi.target import base
+
+
+class ArmGnuToolchainNoneEabiTarget(base.BuildTarget):
+    def __init__(self):
+        super().__init__('arm-gnu-toolchain-none-eabi')
+
+    def prepare_source(self, state: BuildState):
+        # Download and extract toolchain source code
+        state.download_source(
+            'https://developer.arm.com/-/media/Files/downloads/gnu/14.3.rel1/srcrel/arm-gnu-toolchain-src-snapshot-14.3.rel1.tar.xz',
+            'd8676291e48029ba8814037a8c5daa30728e406d0a1ba89f1081470af9175d69')
+
+        # Save the current source path for later
+        real_source_path = state.source
+
+        # Download and extract build scripts
+        state.download_source(
+            'https://gitlab.arm.com/tooling/gnu-devtools-for-arm/-/archive/v1.5.0/gnu-devtools-for-arm-v1.5.0.tar.bz2',
+            '589ae231b5905e6ab4f2555d6452597c37a87c323e97a6d1d1063dbff09badeb')
+
+        devtools_path = real_source_path / 'gnu-devtools-for-arm'
+        shutil.copytree(state.source, devtools_path, dirs_exist_ok=True)
+
+        # Make symbolic link to build script inside correct source path
+        build_script = 'build-gnu-toolchain.sh'
+        build_script_path = real_source_path / build_script
+
+        if not build_script_path.exists():
+            build_script_path.symlink_to(state.source / build_script)
+
+        # Restore correct source path
+        state.source = real_source_path
 
 
 class DfuUtilTarget(base.ConfigureMakeDependencyTarget):
