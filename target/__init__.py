@@ -57,6 +57,7 @@ def targets():
         # GCC
         ArmNoneEabiBinutilsTarget(),
         GmpTarget(),
+        IslTarget(),
 
         # Tools
         DfuUtilTarget(),
