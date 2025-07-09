@@ -20,6 +20,25 @@ from aedi.state import BuildState
 from aedi.target import base
 
 
+class ArmNoneEabiBinutilsTarget(base.ConfigureMakeDependencyTarget):
+    def __init__(self):
+        super().__init__('arm-none-eabi-binutils')
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://ftpmirror.gnu.org/binutils/binutils-2.44.tar.bz2',
+            'f66390a661faa117d00fab2e79cf2dc9d097b42cc296bf3f8677d1e7b452dc3a')
+
+    def detect(self, state: BuildState) -> bool:
+        return state.has_source_file('binutils/doc/binutils.info')
+
+    def configure(self, state: BuildState):
+        opts = state.options
+        opts['--target'] = 'arm-none-eabi'
+        opts['--with-system-zlib'] = None
+        super().configure(state)
+
+
 class DfuUtilTarget(base.ConfigureMakeDependencyTarget):
     def __init__(self):
         super().__init__('dfu-util')
