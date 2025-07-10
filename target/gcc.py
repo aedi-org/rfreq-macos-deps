@@ -92,3 +92,17 @@ class IslTarget(base.ConfigureMakeStaticDependencyTarget):
     def configure(self, state: BuildState):
         state.environment['CXXFLAGS'] = '-std=c++17'  # required to compile isl_test_cpp17
         super().configure(state)
+
+
+class MpfrTarget(base.ConfigureMakeStaticDependencyTarget):
+    def __init__(self):
+        super().__init__('mpfr')
+        self.prerequisites = ('gmp',)
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://ftpmirror.gnu.org/mpfr/mpfr-4.2.2.tar.xz',
+            'b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01')
+
+    def detect(self, state: BuildState) -> bool:
+        return state.has_source_file('mpfr.pc.in')
