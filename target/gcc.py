@@ -38,6 +38,7 @@ class ArmNoneEabiBinutilsTarget(base.ConfigureMakeDependencyTarget):
         opts = state.options
         opts['--target'] = 'arm-none-eabi'
         opts['--with-system-zlib'] = None
+        opts['--without-zstd'] = None
         super().configure(state)
 
 
@@ -75,7 +76,7 @@ class ArmNoneEabiGccTarget(base.BuildTarget):
             '--disable-shared',
             '--enable-languages=c,c++,lto',
             '--enable-lto',
-            '--target=arm-none-eabi',
+            '--target=' + self.target,
             '--with-cpu=cortex-m4',
             '--with-fpu=fpv4-sp-d16',
             '--with-newlib',
