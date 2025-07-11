@@ -51,7 +51,6 @@ class ArmNoneEabiGccTarget(base.BuildTarget):
 
         self.multi_platform = False
         self.prerequisites = ('arm-none-eabi-binutils', 'isl', 'mpc')
-        self.target = 'arm-none-eabi'
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -76,21 +75,13 @@ class ArmNoneEabiGccTarget(base.BuildTarget):
             '--disable-shared',
             '--enable-languages=c,c++,lto',
             '--enable-lto',
-            '--target=' + self.target,
+            '--target=arm-none-eabi',
             '--with-cpu=cortex-m4',
             '--with-fpu=fpv4-sp-d16',
             '--with-newlib',
             '--with-system-zlib',
             '--without-headers',
             '--without-zstd',
-            f'AR_FOR_TARGET={self.target}-ar',
-	        f'AS_FOR_TARGET={self.target}-as',
-	        f'LD_FOR_TARGET={self.target}-ld',
-	        f'NM_FOR_TARGET={self.target}-nm',
-	        f'OBJDUMP_FOR_TARGET={self.target}-objdump',
-	        f'RANLIB_FOR_TARGET={self.target}-ranlib',
-	        f'READELF_FOR_TARGET={self.target}-readelf',
-	        f'STRIP_FOR_TARGET={self.target}-strip',
         )
         subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
 
