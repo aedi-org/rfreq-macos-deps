@@ -63,27 +63,25 @@ class ArmNoneEabiGccTarget(base.BuildTarget):
             str(state.source / 'configure'),
             '--prefix=' + self.INSTALL_PREFIX,
             '--build=' + state.host(),
+            '--disable-libssp',
+            '--disable-multilib',
             '--disable-nls',
             '--disable-shared',
             '--enable-languages=c,c++,lto',
             '--enable-lto',
-            '--enable-multilib',
             '--target=arm-none-eabi',
-            '--with-multilib-list=aprofile,rmprofile',
+            '--with-cpu=cortex-m4',
+            '--with-fpu=fpv4-sp-d16',
             '--with-system-zlib',
             '--without-headers',
-            '--without-zlib',
             '--without-zstd',
+            # '--with-multilib-list=armv7e-m+vfpv4-d16',
+            # '--with-multilib-list=armv7e-m+fp',
         )
         subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
 
     def build(self, state: BuildState):
-        args = (
-            'make',
-            '--jobs', state.jobs,
-            f'CC={state.c_compiler()}',
-            f'CXX={state.cxx_compiler()}',
-        )
+        args = ('make', '--jobs', state.jobs)
         subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
 
     def post_build(self, state: BuildState):
