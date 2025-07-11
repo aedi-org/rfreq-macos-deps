@@ -57,6 +57,7 @@ def targets():
         # GCC
         ArmNoneEabiBinutilsTarget(),
         ArmNoneEabiGccTarget(),
+        ArmNoneEabiNewlibTarget(),
         GmpTarget(),
         IslTarget(),
         MpcTarget(),

@@ -16,7 +16,10 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
 import subprocess
+
+from setuptools.msvc import environ
 
 from aedi.state import BuildState
 from aedi.target import base
@@ -84,6 +87,41 @@ class ArmNoneEabiGccTarget(base.BuildTarget):
             '--without-zstd',
         )
         subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
+
+    def build(self, state: BuildState):
+        args = ('make', '--jobs', state.jobs)
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
+
+    def post_build(self, state: BuildState):
+        self.install(state)
+
+
+class ArmNoneEabiNewlibTarget(base.BuildTarget):
+    def __init__(self):
+        super().__init__('arm-none-eabi-newlib')
+
+        self.multi_platform = False
+        self.prerequisites = ('arm-none-eabi-gcc',)
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://sourceware.org/pub/newlib/newlib-4.5.0.20241231.tar.gz',
+            '33f12605e0054965996c25c1382b3e463b0af91799001f5bb8c0630f2ec8c852')
+
+    def configure(self, state: BuildState):
+        super().configure(state)
+
+        environment = state.environment
+        del state.environment['CC']
+        del state.environment['CXX']
+
+        args = (
+            str(state.source / 'configure'),
+            '--prefix=' + self.INSTALL_PREFIX,
+            '--host=arm-none-eabi',
+            '--disable-newlib-supplied-syscalls',
+        )
+        subprocess.run(args, check=True, cwd=state.build_path, env=environment)
 
     def build(self, state: BuildState):
         args = ('make', '--jobs', state.jobs)
