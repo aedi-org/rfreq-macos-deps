@@ -115,7 +115,7 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
         args = (
             str(state.source / 'configure'),
             '--prefix=' + self.INSTALL_PREFIX,
-            '--host=arm-none-eabi',
+            '--target=arm-none-eabi',
             '--disable-newlib-supplied-syscalls',
         )
         subprocess.run(args, check=True, cwd=state.build_path, env=environment)
