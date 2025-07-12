@@ -45,13 +45,13 @@ class ArmNoneEabiBinutilsTarget(base.ConfigureMakeDependencyTarget):
 
 class ArmNoneEabiGccTarget(base.BuildTarget):
     # TODO: Avoid absolute paths in various files
-    # TODO: Add cross-compilation support
 
     def __init__(self):
         super().__init__('arm-none-eabi-gcc')
-
-        self.multi_platform = False
         self.prerequisites = ('arm-none-eabi-binutils', 'isl', 'mpc')
+
+        # TODO: Add cross-compilation support
+        self.multi_platform = False
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -95,6 +95,8 @@ class ArmNoneEabiGccTarget(base.BuildTarget):
 
 
 class ArmNoneEabiNewlibTarget(base.BuildTarget):
+    # TODO: Avoid absolute paths in various files
+
     def __init__(self):
         super().__init__('arm-none-eabi-newlib')
 
@@ -234,6 +236,8 @@ class MpfrTarget(base.ConfigureMakeStaticDependencyTarget):
 class TexinfoTarget(base.ConfigureMakeDependencyTarget):
     def __init__(self):
         super().__init__('texinfo')
+
+        # TODO: Add cross-compilation support
         self.multi_platform = False
 
     def prepare_source(self, state: BuildState):
