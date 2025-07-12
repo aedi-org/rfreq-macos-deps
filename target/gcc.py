@@ -98,7 +98,7 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
         super().__init__('arm-none-eabi-newlib')
 
         self.multi_platform = False
-        self.prerequisites = ('arm-none-eabi-gcc',)
+        self.prerequisites = ('arm-none-eabi-gcc', 'texinfo')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -114,9 +114,21 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
 
         args = (
             str(state.source / 'configure'),
+            '--disable-multilib',
+            '--disable-newlib-supplied-syscalls',
+            '--disable-nls',
             '--prefix=' + self.INSTALL_PREFIX,
             '--target=arm-none-eabi',
-            '--disable-newlib-supplied-syscalls',
+            # Options for newlib-nano
+	        '--disable-newlib-fseek-optimization',
+	        '--disable-newlib-fvwrite-in-streamio',
+	        '--disable-newlib-unbuf-stream-opt',
+	        '--disable-newlib-wide-orient',
+	        '--enable-lite-exit',
+	        '--enable-newlib-global-atexit',
+	        '--enable-newlib-nano-formatted-io',
+	        '--enable-newlib-nano-malloc',
+            '--enable-newlib-reent-small',
         )
         subprocess.run(args, check=True, cwd=state.build_path, env=environment)
 
