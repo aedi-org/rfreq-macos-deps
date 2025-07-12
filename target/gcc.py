@@ -16,10 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import os
 import subprocess
-
-from setuptools.msvc import environ
 
 from aedi.state import BuildState
 from aedi.target import base
