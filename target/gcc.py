@@ -207,3 +207,17 @@ class MpfrTarget(base.ConfigureMakeStaticDependencyTarget):
 
     def detect(self, state: BuildState) -> bool:
         return state.has_source_file('mpfr.pc.in')
+
+
+class TexinfoTarget(base.ConfigureMakeDependencyTarget):
+    def __init__(self):
+        super().__init__('texinfo')
+        self.multi_platform = False
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://ftpmirror.gnu.org/texinfo/texinfo-7.2.tar.xz',
+            '0329d7788fbef113fa82cb80889ca197a344ce0df7646fe000974c5d714363a6')
+
+    def detect(self, state: BuildState) -> bool:
+        return state.has_source_file('man/texinfo.5')
