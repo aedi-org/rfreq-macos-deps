@@ -16,6 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
 import subprocess
 
 from aedi.state import BuildState
@@ -138,6 +139,15 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
 
     def post_build(self, state: BuildState):
         self.install(state)
+
+        # Append suffix to library names manually to match with lib/nano.specs
+        lib_path = state.install_path / 'arm-none-eabi/lib'
+        lib_suffixes = ('c', 'g', 'rdimon')
+
+        for suffix in lib_suffixes:
+            old_path = f'{lib_path}/lib{suffix}.a'
+            new_path = f'{lib_path}/lib{suffix}_nano.a'
+            os.rename(old_path, new_path)
 
 
 class GmpTarget(base.ConfigureMakeStaticDependencyTarget):
