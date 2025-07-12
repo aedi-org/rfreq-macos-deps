@@ -121,14 +121,14 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
             '--prefix=' + self.INSTALL_PREFIX,
             '--target=arm-none-eabi',
             # Options for newlib-nano
-	        '--disable-newlib-fseek-optimization',
-	        '--disable-newlib-fvwrite-in-streamio',
-	        '--disable-newlib-unbuf-stream-opt',
-	        '--disable-newlib-wide-orient',
-	        '--enable-lite-exit',
-	        '--enable-newlib-global-atexit',
-	        '--enable-newlib-nano-formatted-io',
-	        '--enable-newlib-nano-malloc',
+            '--disable-newlib-fseek-optimization',
+            '--disable-newlib-fvwrite-in-streamio',
+            '--disable-newlib-unbuf-stream-opt',
+            '--disable-newlib-wide-orient',
+            '--enable-lite-exit',
+            '--enable-newlib-global-atexit',
+            '--enable-newlib-nano-formatted-io',
+            '--enable-newlib-nano-malloc',
             '--enable-newlib-reent-small',
         )
         subprocess.run(args, check=True, cwd=state.build_path, env=environment)
