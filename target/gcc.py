@@ -141,10 +141,8 @@ class GmpTarget(base.ConfigureMakeStaticDependencyTarget):
         return state.has_source_file('gmp.pc.in')
 
     def configure(self, state: BuildState):
-        opts = state.options
-        opts['--enable-cxx'] = None
-        opts['--with-pic'] = None  # https://github.com/Homebrew/homebrew-core/issues/19407
-
+        # Static linking requires PIC, see https://github.com/Homebrew/homebrew-core/issues/19407
+        state.options['--with-pic'] = None
         super().configure(state)
 
     def post_build(self, state: BuildState):
