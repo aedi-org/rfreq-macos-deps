@@ -152,6 +152,45 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
             os.rename(old_path, new_path)
 
 
+class ArmNoneEabiStdcxxTarget(base.BuildTarget):
+    def __init__(self):
+        super().__init__('arm-none-eabi-libstdcxx')
+
+        self.multi_platform = False
+        self.prerequisites = ('arm-none-eabi-newlib',)
+        # self.src_root = 'libstdc++-v3'
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://ftpmirror.gnu.org/gcc/gcc-15.1.0/gcc-15.1.0.tar.xz',
+            'e2b09ec21660f01fecffb715e0120265216943f038d0e48a9868713e54f06cea')
+
+    def configure(self, state: BuildState):
+        super().configure(state)
+
+        environment = state.environment
+        del state.environment['CC']
+        del state.environment['CXX']
+
+        args = (
+            str(state.source / 'libstdc++-v3/configure'),
+            '--disable-multilib',
+            '--disable-nls',
+            '--prefix=' + self.INSTALL_PREFIX,
+            '--target=arm-none-eabi',
+            '--with-gnu-ld',
+            '--with-newlib',
+        )
+        subprocess.run(args, check=True, cwd=state.build_path, env=environment)
+
+    def build(self, state: BuildState):
+        args = ('make', '--jobs', state.jobs)
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
+
+    def post_build(self, state: BuildState):
+        self.install(state)
+
+
 class GmpTarget(base.ConfigureMakeStaticDependencyTarget):
     def __init__(self):
         super().__init__('gmp')
