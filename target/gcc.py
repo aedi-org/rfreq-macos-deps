@@ -16,6 +16,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import subprocess
+
 from aedi.state import BuildState
 from aedi.target import base
 
@@ -38,6 +40,57 @@ class ArmNoneEabiBinutilsTarget(base.ConfigureMakeDependencyTarget):
         opts['--with-system-zlib'] = None
         opts['--without-zstd'] = None
         super().configure(state)
+
+
+class ArmNoneEabiGccTarget(base.BuildTarget):
+    # TODO: Avoid absolute paths in various files
+
+    def __init__(self):
+        super().__init__('arm-none-eabi-gcc')
+        self.prerequisites = ('arm-none-eabi-binutils', 'isl', 'mpc')
+
+        # TODO: Add cross-compilation support
+        self.multi_platform = False
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://ftpmirror.gnu.org/gcc/gcc-15.1.0/gcc-15.1.0.tar.xz',
+            'e2b09ec21660f01fecffb715e0120265216943f038d0e48a9868713e54f06cea')
+
+    def detect(self, state: BuildState) -> bool:
+        return state.has_source_file('gcc/gcc.h')
+
+    def configure(self, state: BuildState):
+        super().configure(state)
+
+        args = (
+            str(state.source / 'configure'),
+            '--prefix=' + self.INSTALL_PREFIX,
+            '--build=' + state.host(),
+            '--disable-libquadmath',
+            '--disable-libssp',
+            '--disable-libstdcxx',
+            '--disable-multilib',
+            '--disable-nls',
+            '--disable-shared',
+            '--enable-languages=c,c++,lto',
+            '--enable-lto',
+            '--target=arm-none-eabi',
+            '--with-cpu=cortex-m4',
+            '--with-fpu=fpv4-sp-d16',
+            '--with-newlib',
+            '--with-system-zlib',
+            '--without-headers',
+            '--without-zstd',
+        )
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
+
+    def build(self, state: BuildState):
+        args = ('make', '--jobs', state.jobs)
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
+
+    def post_build(self, state: BuildState):
+        self.install(state)
 
 
 class GmpTarget(base.ConfigureMakeStaticDependencyTarget):
