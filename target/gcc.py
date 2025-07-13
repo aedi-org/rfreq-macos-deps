@@ -93,6 +93,20 @@ class IslTarget(base.ConfigureMakeStaticDependencyTarget):
         super().configure(state)
 
 
+class MpcTarget(base.ConfigureMakeStaticDependencyTarget):
+    def __init__(self):
+        super().__init__('mpc')
+        self.prerequisites = ('mpfr',)
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://ftpmirror.gnu.org/mpc/mpc-1.3.1.tar.gz',
+            'ab642492f5cf882b74aa0cb730cd410a81edcdbec895183ce930e706c1c759b8')
+
+    def detect(self, state: BuildState) -> bool:
+        return state.has_source_file('src/mpc.h')
+
+
 class MpfrTarget(base.ConfigureMakeStaticDependencyTarget):
     def __init__(self):
         super().__init__('mpfr')
