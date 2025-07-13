@@ -61,6 +61,7 @@ def targets():
         IslTarget(),
         MpcTarget(),
         MpfrTarget(),
+        TexinfoTarget(),
 
         # Tools
         DfuUtilTarget(),
