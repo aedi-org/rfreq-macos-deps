@@ -73,3 +73,21 @@ class GmpTarget(base.ConfigureMakeStaticDependencyTarget):
             return line
 
         self.update_text_file(state.install_path / 'include/gmp.h', cleanup_cc_cflags)
+
+
+class IslTarget(base.ConfigureMakeStaticDependencyTarget):
+    def __init__(self):
+        super().__init__('isl')
+        self.prerequisites = ('gmp',)
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://libisl.sourceforge.io/isl-0.27.tar.xz',
+            '6d8babb59e7b672e8cb7870e874f3f7b813b6e00e6af3f8b04f7579965643d5c')
+
+    def detect(self, state: BuildState) -> bool:
+        return state.has_source_file('isl_int.h')
+
+    def configure(self, state: BuildState):
+        state.environment['CXXFLAGS'] = '-std=c++17'  # required to compile isl_test_cpp17
+        super().configure(state)
