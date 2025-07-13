@@ -58,6 +58,7 @@ def targets():
         ArmNoneEabiBinutilsTarget(),
         GmpTarget(),
         IslTarget(),
+        MpfrTarget(),
 
         # Tools
         DfuUtilTarget(),
