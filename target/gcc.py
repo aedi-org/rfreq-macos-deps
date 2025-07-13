@@ -112,8 +112,8 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
         super().configure(state)
 
         environment = state.environment
+        environment['CFLAGS'] += ' -g -Os -ffunction-sections -fdata-sections -fshort-wchar'
         del state.environment['CC']
-        del state.environment['CXX']
 
         args = (
             str(state.source / 'configure'),
