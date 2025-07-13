@@ -16,6 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+import os
 import subprocess
 
 from aedi.state import BuildState
@@ -91,6 +92,64 @@ class ArmNoneEabiGccTarget(base.BuildTarget):
 
     def post_build(self, state: BuildState):
         self.install(state)
+
+
+class ArmNoneEabiNewlibTarget(base.BuildTarget):
+    # TODO: Avoid absolute paths in various files
+
+    def __init__(self):
+        super().__init__('arm-none-eabi-newlib')
+
+        self.multi_platform = False
+        self.prerequisites = ('arm-none-eabi-gcc', 'texinfo')
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://sourceware.org/pub/newlib/newlib-4.5.0.20241231.tar.gz',
+            '33f12605e0054965996c25c1382b3e463b0af91799001f5bb8c0630f2ec8c852')
+
+    def configure(self, state: BuildState):
+        super().configure(state)
+
+        environment = state.environment
+        del state.environment['CC']
+        del state.environment['CXX']
+
+        args = (
+            str(state.source / 'configure'),
+            '--disable-multilib',
+            '--disable-newlib-supplied-syscalls',
+            '--disable-nls',
+            '--prefix=' + self.INSTALL_PREFIX,
+            '--target=arm-none-eabi',
+            # Options for newlib-nano
+            '--disable-newlib-fseek-optimization',
+            '--disable-newlib-fvwrite-in-streamio',
+            '--disable-newlib-unbuf-stream-opt',
+            '--disable-newlib-wide-orient',
+            '--enable-lite-exit',
+            '--enable-newlib-global-atexit',
+            '--enable-newlib-nano-formatted-io',
+            '--enable-newlib-nano-malloc',
+            '--enable-newlib-reent-small',
+        )
+        subprocess.run(args, check=True, cwd=state.build_path, env=environment)
+
+    def build(self, state: BuildState):
+        args = ('make', '--jobs', state.jobs)
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
+
+    def post_build(self, state: BuildState):
+        self.install(state)
+
+        # Append suffix to library names manually to match with lib/nano.specs
+        lib_path = state.install_path / 'arm-none-eabi/lib'
+        lib_suffixes = ('c', 'g', 'rdimon')
+
+        for suffix in lib_suffixes:
+            old_path = f'{lib_path}/lib{suffix}.a'
+            new_path = f'{lib_path}/lib{suffix}_nano.a'
+            os.rename(old_path, new_path)
 
 
 class GmpTarget(base.ConfigureMakeStaticDependencyTarget):
