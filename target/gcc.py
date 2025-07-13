@@ -55,8 +55,8 @@ class ArmNoneEabiGccTarget(base.BuildTarget):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://ftpmirror.gnu.org/gcc/gcc-15.1.0/gcc-15.1.0.tar.xz',
-            'e2b09ec21660f01fecffb715e0120265216943f038d0e48a9868713e54f06cea')
+            'https://ftpmirror.gnu.org/gcc/gcc-14.2.0/gcc-14.2.0.tar.xz',
+            'a7b39bc69cbf9e25826c5a60ab26477001f7c08d85cec04bc0e29cabed6f3cc9')
 
     def detect(self, state: BuildState) -> bool:
         return state.has_source_file('gcc/gcc.h')
