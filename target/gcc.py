@@ -38,3 +38,38 @@ class ArmNoneEabiBinutilsTarget(base.ConfigureMakeDependencyTarget):
         opts['--with-system-zlib'] = None
         opts['--without-zstd'] = None
         super().configure(state)
+
+
+class GmpTarget(base.ConfigureMakeStaticDependencyTarget):
+    def __init__(self):
+        super().__init__('gmp')
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz',
+            'a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898')
+
+    def detect(self, state: BuildState) -> bool:
+        return state.has_source_file('gmp.pc.in')
+
+    def configure(self, state: BuildState):
+        # Static linking requires PIC, see https://github.com/Homebrew/homebrew-core/issues/19407
+        state.options['--with-pic'] = None
+        super().configure(state)
+
+    def post_build(self, state: BuildState):
+        super().post_build(state)
+
+        replacements = {
+            '#define __GMP_CC ': 'clang\n',
+            '#define __GMP_CFLAGS ': '\n',
+        }
+
+        def cleanup_cc_cflags(line: str):
+            for prefix, replacement in replacements.items():
+                if line.startswith(prefix):
+                    return prefix + replacement
+
+            return line
+
+        self.update_text_file(state.install_path / 'include/gmp.h', cleanup_cc_cflags)
