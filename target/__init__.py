@@ -16,6 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from .gcc import *
 from .library import *
 from .main import *
 from .tool import *
@@ -52,6 +53,9 @@ def targets():
         UsbTarget(),
         VolkTarget(),
         ZstdTarget(),
+
+        # GCC
+        ArmNoneEabiBinutilsTarget(),
 
         # Tools
         DfuUtilTarget(),
