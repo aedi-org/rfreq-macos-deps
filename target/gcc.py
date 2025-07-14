@@ -111,10 +111,6 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
     def configure(self, state: BuildState):
         super().configure(state)
 
-        environment = state.environment
-        environment['CFLAGS'] += ' -g -Os -ffunction-sections -fdata-sections -fshort-wchar'
-        del state.environment['CC']
-
         args = (
             str(state.source / 'configure'),
             '--disable-multilib',
@@ -132,8 +128,10 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
             '--enable-newlib-nano-formatted-io',
             '--enable-newlib-nano-malloc',
             '--enable-newlib-reent-small',
+            'CFLAGS_FOR_TARGET=-g -Os -ffunction-sections -fdata-sections -fshort-wchar'
+            ' -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16',
         )
-        subprocess.run(args, check=True, cwd=state.build_path, env=environment)
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
 
     def build(self, state: BuildState):
         args = ('make', '--jobs', state.jobs)
