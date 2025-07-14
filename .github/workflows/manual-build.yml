@@ -81,7 +81,6 @@ jobs:
 
       - name: List Build Directory
         if: always()
-        shell: bash
         run: |
           git status
           ls -lR .

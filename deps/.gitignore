@@ -1,8 +1,16 @@
 /*/share
 /**/*.la
 
+# Libraries
 /mako/
 /markupsafe/
 /rfnm/lib/librfnm.a
 /spdlog/
 /volk/bin/
+
+# GCC
+/arm-none-eabi-*/
+/gmp/
+/isl/
+/mpc/
+/mpfr/
