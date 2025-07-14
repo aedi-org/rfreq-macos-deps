@@ -156,7 +156,6 @@ class ArmNoneEabiStdcxxTarget(base.BuildTarget):
 
         self.multi_platform = False
         self.prerequisites = ('arm-none-eabi-newlib',)
-        # self.src_root = 'libstdc++-v3'
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -166,20 +165,21 @@ class ArmNoneEabiStdcxxTarget(base.BuildTarget):
     def configure(self, state: BuildState):
         super().configure(state)
 
-        environment = state.environment
-        del state.environment['CC']
-        del state.environment['CXX']
-
+        flags = ('-g -Os -ffunction-sections -fdata-sections -fno-exceptions '
+                 '-mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16')
         args = (
             str(state.source / 'libstdc++-v3/configure'),
             '--disable-multilib',
             '--disable-nls',
+            '--disable-shared',
+            '--host=arm-none-eabi',
             '--prefix=' + self.INSTALL_PREFIX,
             '--target=arm-none-eabi',
-            '--with-gnu-ld',
             '--with-newlib',
+            f'CFLAGS_FOR_TARGET={flags}',
+            f'CXXFLAGS_FOR_TARGET={flags}',
         )
-        subprocess.run(args, check=True, cwd=state.build_path, env=environment)
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
 
     def build(self, state: BuildState):
         args = ('make', '--jobs', state.jobs)
