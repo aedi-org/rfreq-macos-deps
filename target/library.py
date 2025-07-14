@@ -569,7 +569,7 @@ class ZstdTarget(base.CMakeSharedDependencyTarget):
 
     def configure(self, state: BuildState):
         opts = state.options
-        opts['ZSTD_BUILD_PROGRAMS'] = 'NO'
         opts['ZSTD_BUILD_STATIC'] = 'NO'
+        opts['ZSTD_PROGRAMS_LINK_SHARED'] = 'YES'
 
         super().configure(state)
