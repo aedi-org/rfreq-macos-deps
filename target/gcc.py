@@ -111,10 +111,6 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
     def configure(self, state: BuildState):
         super().configure(state)
 
-        environment = state.environment
-        del state.environment['CC']
-        del state.environment['CXX']
-
         args = (
             str(state.source / 'configure'),
             '--disable-multilib',
@@ -133,7 +129,7 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
             '--enable-newlib-nano-malloc',
             '--enable-newlib-reent-small',
         )
-        subprocess.run(args, check=True, cwd=state.build_path, env=environment)
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
 
     def build(self, state: BuildState):
         args = ('make', '--jobs', state.jobs)
