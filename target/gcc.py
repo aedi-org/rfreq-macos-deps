@@ -128,6 +128,8 @@ class ArmNoneEabiNewlibTarget(base.BuildTarget):
             '--enable-newlib-nano-formatted-io',
             '--enable-newlib-nano-malloc',
             '--enable-newlib-reent-small',
+            'CFLAGS_FOR_TARGET=-g -Os -ffunction-sections -fdata-sections -fshort-wchar'
+            ' -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16',
         )
         subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
 
