@@ -1,0 +1,48 @@
+From 4eafbb29d106b32221c8d3b375b31d78f07de182 Mon Sep 17 00:00:00 2001
+From: Rui Chen <rui@chenrui.dev>
+Date: Sat, 17 Feb 2024 17:42:14 -0500
+Subject: [PATCH] add libusb MINIMAL_API_VERSION support for osx builds
+
+Signed-off-by: Rui Chen <rui@chenrui.dev>
+---
+ src/stlink-lib/libusb_settings.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/stlink-lib/libusb_settings.h b/src/stlink-lib/libusb_settings.h
+index b0a51ad3170601fc26d880da7aa76b2fda587dcf..9878c1050a577299ed0905db5c8e774f322ab82a 100644
+--- a/src/stlink-lib/libusb_settings.h
++++ b/src/stlink-lib/libusb_settings.h
+@@ -40,6 +40,8 @@
+     #define MINIMAL_API_VERSION 0x01000102 // v1.0.16
+ #elif defined (__OpenBSD__)
+     #define MINIMAL_API_VERSION 0x01000106 // v1.0.22
++#elif defined (__APPLE__)
++    #define MINIMAL_API_VERSION 0x01000106 // v1.0.22
+ #elif defined (__linux__)
+     #define MINIMAL_API_VERSION 0x01000106 // v1.0.22
+ #elif defined (_WIN32)
+From d742e752d896c0f8d4a61b282457401f7a681b16 Mon Sep 17 00:00:00 2001
+From: Rui Chen <rui@chenrui.dev>
+Date: Sat, 17 Feb 2024 17:54:20 -0500
+Subject: [PATCH] exclude `-Wshorten-64-to-32` checks for clang builds
+
+Signed-off-by: Rui Chen <rui@chenrui.dev>
+---
+ cmake/modules/c_flags.cmake | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/cmake/modules/c_flags.cmake b/cmake/modules/c_flags.cmake
+index e28ea2dae8d0aea6dbf9f1e5114183cd6f303e73..479291c387b1217ba32700054c99f8d66a05426b 100644
+--- a/cmake/modules/c_flags.cmake
++++ b/cmake/modules/c_flags.cmake
+@@ -28,7 +28,9 @@ add_cflag_if_supported("-Wformat")
+ add_cflag_if_supported("-Wformat-security")
+ add_cflag_if_supported("-Wmaybe-uninitialized")
+ add_cflag_if_supported("-Wmissing-variable-declarations")
+-add_cflag_if_supported("-Wshorten-64-to-32")
++if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
++    add_cflag_if_supported("-Wshorten-64-to-32")
++endif()
+ add_cflag_if_supported("-Wimplicit-function-declaration")
+ 
+ ##

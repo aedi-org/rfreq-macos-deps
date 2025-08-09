@@ -68,4 +68,5 @@ def targets():
         DfuUtilTarget(),
         OrcTarget(),
         Rtl433Target(),
+        StlinkTarget(),
     )
