@@ -74,5 +74,5 @@ class StlinkTarget(base.CMakeDependencyTarget):
         state.download_source(
             'https://github.com/stlink-org/stlink/archive/refs/tags/v1.8.0.tar.gz',
             'cff760b5c212c2cc480f705b9ca7f3828d6b9c267950c6a547002cd0a1f5f6ac',
-            # https://github.com/stlink-org/stlink/pull/1373/commits
-            patches='stlink-fix-build')
+            # Build fix patch from https://github.com/stlink-org/stlink/pull/1373/commits
+            patches=('stlink-fix-build', 'stlink-relative-chips'))

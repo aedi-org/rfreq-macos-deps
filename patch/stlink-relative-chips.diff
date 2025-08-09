@@ -1,0 +1,48 @@
+--- a/src/stlink-lib/chipid.c
++++ b/src/stlink-lib/chipid.c
+@@ -222,6 +222,30 @@
+   devicelist = NULL;
+   d = opendir(dir_to_scan);
+ 
++#ifdef __APPLE__
++  char *reldir = NULL;
++  if (!d) {
++    uint32_t reldirsize = 0;
++    _NSGetExecutablePath(NULL, &reldirsize);
++
++    const char subdir[] = "/share/stlink/chips";
++    reldir = malloc(reldirsize + sizeof subdir);
++    _NSGetExecutablePath(reldir, &reldirsize);
++
++    char *exedir = reldir;
++
++    for (int i = 0; i < 2; ++i) {
++      exedir = strrchr(reldir, '/');
++      *exedir = 0;
++    }
++
++    strcat(exedir, subdir);
++
++    dir_to_scan = reldir;
++    d = opendir(reldir);
++  }
++#endif // __APPLE__
++
+   if (d) {
+     while ((dir = readdir(d)) != NULL) {
+       nl = strlen(dir->d_name);
+@@ -236,8 +260,13 @@
+     closedir(d);
+   } else {
+     perror(dir_to_scan);
+-    return;
+   }
++
++#ifdef __APPLE__
++  if (reldir) {
++    free(reldir);
++  }
++#endif // __APPLE__
+ }
+ 
+ #endif // STLINK_HAVE_DIRENT_H
