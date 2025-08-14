@@ -63,7 +63,7 @@ class Rtl433Target(base.CMakeDependencyTarget):
         state.download_source(
             'https://github.com/merbanan/rtl_433/archive/refs/tags/25.02.tar.gz',
             '5a409ea10e6d3d7d4aa5ea91d2d6cc92ebb2d730eb229c7b37ade65458223432',
-            patches=('rtl433-force-version', 'rtl433-no-abspath'))
+            patches='rtl433-force-version')
 
 
 class StlinkTarget(base.CMakeDependencyTarget):
