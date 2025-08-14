@@ -15,3 +15,9 @@
 /mpc/
 /mpfr/
 /texinfo/
+
+# Tools
+/stlink/include
+/stlink/lib/*.a
+!/stlink/share/
+/stlink/share/man
