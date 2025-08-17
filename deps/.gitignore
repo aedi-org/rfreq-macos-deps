@@ -2,6 +2,7 @@
 /**/*.la
 
 # Libraries
+/hackrf/lib/libhackrf.a
 /hydrasdr/lib/libhydrasdr.a
 /mako/
 /markupsafe/
