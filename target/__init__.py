@@ -39,6 +39,7 @@ def targets():
         FobosAgileTarget(),
         GlfwTarget(),
         HackRFTarget(),
+        HydraSdrTarget(),
         IioTarget(),
         LimeSuiteTarget(),
         MakoTarget(),

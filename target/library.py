@@ -282,6 +282,26 @@ class HackRFTarget(base.CMakeSharedDependencyTarget):
         super().configure(state)
 
 
+class HydraSdrTarget(base.CMakeSharedDependencyTarget):
+    def __init__(self):
+        super().__init__('hydrasdr')
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://github.com/hydrasdr/rfone_host/archive/refs/tags/v1.0.2.tar.gz',
+            '4d5d47bd5f34479073b50229e95be606d6236714c048af97ed356ab090f158ac')
+
+    @staticmethod
+    def _process_pkg_config(_, line: str) -> str:
+        # TODO: figure out why Intel and ARM Cflags don't match
+        cflags = 'Cflags: '
+
+        if line.startswith(cflags):
+            return cflags + '-I${includedir}/libhydrasdr -I${includedir}/libusb-1.0\n'
+
+        return line
+
+
 class IioTarget(base.CMakeSharedDependencyTarget):
     def __init__(self):
         super().__init__('iio')
