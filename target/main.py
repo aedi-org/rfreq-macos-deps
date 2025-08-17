@@ -141,6 +141,7 @@ class SdrPlusPlusBaseTarget(CMakeMainTarget):
             'fobos',
             'glfw.3',
             'hackrf.0',
+            'hydrasdr.0',
             'iio.0',
             'LimeSuite.23.11-1',
             'perseus-sdr.0',
@@ -162,6 +163,7 @@ class SdrPlusPlusBaseTarget(CMakeMainTarget):
         enabled_options = (
             'BLADERF_SOURCE',
             'FOBOSSDR_SOURCE',
+            'HYDRASDR_SOURCE',
             'LIMESDR_SOURCE',
             'M17_DECODER',
             'NEW_PORTAUDIO_SINK',
