@@ -212,9 +212,39 @@ class FftwTarget(base.CMakeSharedDependencyTarget):
         self.update_text_file(cmake_module, update_dirs)
 
 
-class FobosTarget(base.CMakeSharedDependencyTarget):
+class FobosBaseTarget(base.CMakeSharedDependencyTarget):
+    def __init__(self, name=None):
+        super().__init__(name)
+        self.installed_tools = ()
+
+    def post_build(self, state: BuildState):
+        super().post_build(state)
+
+        project_name = self.project_name or self.name
+
+        if state.xcode:
+            self.hardcopy_xcode_deps(state, 'usb')
+        else:
+            for suffix in self.installed_tools:
+                self.copy_to_bin(state, f'{project_name}_{suffix}')
+
+        # Delete absolute paths for .pc file
+        absolute_paths = (f' -I{state.include_path}', f' -L{state.lib_path}')
+
+        def remove_absolute_paths(line: str):
+            for path in absolute_paths:
+                line = line.replace(path, '')
+
+            return line
+
+        pc_path = state.install_path / f'lib/pkgconfig/lib{project_name}.pc'
+        self.update_text_file(pc_path, remove_absolute_paths)
+
+
+class FobosTarget(FobosBaseTarget):
     def __init__(self):
         super().__init__('fobos')
+        self.installed_tools = ('devinfo', 'fwloader', 'recorder')
 
     def prepare_source(self, state: BuildState):
         # Unlike the corresponding tag, the following commit is the proper version 2.3.2
@@ -225,20 +255,12 @@ class FobosTarget(base.CMakeSharedDependencyTarget):
         # Use commit datetime to have a deterministic build, see fobos_rx_get_api_info() function
         state.set_build_datetime(2025, 1, 20, 10, 6, 1)
 
-    def post_build(self, state: BuildState):
-        super().post_build(state)
 
-        if state.xcode:
-            self.hardcopy_xcode_deps(state, 'usb')
-        else:
-            for suffix in ('devinfo', 'fwloader', 'recorder'):
-                self.copy_to_bin(state, 'fobos_' + suffix)
-
-
-class FobosAgileTarget(base.CMakeSharedDependencyTarget):
+class FobosAgileTarget(FobosBaseTarget):
     def __init__(self):
         super().__init__('fobos-agile')
         self.project_name = 'fobos_sdr'
+        self.installed_tools = ('devinfo', 'fwloader', 'recorder', 'scanner')
 
     def prepare_source(self, state: BuildState):
         patches = ['fobos-agile-fix-' + suffix for suffix in ('cmake', 'open', 'pc', 'tools')]
@@ -248,15 +270,6 @@ class FobosAgileTarget(base.CMakeSharedDependencyTarget):
             patches)
         # Use commit datetime to have a deterministic build, see fobos_sdr_get_api_info() function
         state.set_build_datetime(2025, 3, 11, 18, 59, 38)
-
-    def post_build(self, state: BuildState):
-        super().post_build(state)
-
-        if state.xcode:
-            self.hardcopy_xcode_deps(state, 'usb')
-        else:
-            for suffix in ('devinfo', 'fwloader', 'recorder', 'scanner'):
-                self.copy_to_bin(state, 'fobos_sdr_' + suffix)
 
 
 class GlfwTarget(base.CMakeSharedDependencyTarget):
