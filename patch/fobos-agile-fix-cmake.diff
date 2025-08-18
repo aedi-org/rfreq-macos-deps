@@ -1,4 +1,4 @@
-From 2e33ad41d25d45f4af155a3e7e39ac176d714305 Mon Sep 17 00:00:00 2001
+From cab3ef2f1147c1395d4f10b78a8ac3a2a9f7a081 Mon Sep 17 00:00:00 2001
 From: "alexey.lysiuk" <alexey.lysiuk@gmail.com>
 Date: Sat, 10 May 2025 13:03:37 +0300
 Subject: [PATCH] Major update of CMake configuration
@@ -9,18 +9,18 @@ Subject: [PATCH] Major update of CMake configuration
 * Select proper `libusb` MSVC libraries for various versions of Visual Studio
 * Remove duplicated and redundant command line options
 * Include `libusb.h` without `libusb-1.0` directory
-* `pkg-config` returns include string with this directory added
-* Windows packages don't have this directory at all
+  * `pkg-config` returns include string with this directory added
+  * Windows packages don't have this directory at all
 * Normalize all CMake commands to lower case
 * Normalize indents by using 4 spaces
 * Install udev rules on Linux only
 ---
- CMakeLists.txt    | 206 +++++++++++++++++++++++-----------------------
+ CMakeLists.txt    | 205 +++++++++++++++++++++++-----------------------
  fobos/fobos_sdr.c |   3 +-
- 2 files changed, 103 insertions(+), 106 deletions(-)
+ 2 files changed, 102 insertions(+), 106 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 4781b3b..b936fb0 100644
+index 4781b3b..02b834b 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -24,15 +24,12 @@
@@ -42,7 +42,7 @@ index 4781b3b..b936fb0 100644
  ########################################################################
  
  ########################################################################
-@@ -47,16 +44,19 @@ endif(NOT CMAKE_BUILD_TYPE)
+@@ -47,50 +44,81 @@ endif(NOT CMAKE_BUILD_TYPE)
  ########################################################################
  # Compiler specific setup
  ########################################################################
@@ -72,10 +72,10 @@ index 4781b3b..b936fb0 100644
  endif()
  ########################################################################
  
-@@ -64,33 +64,62 @@ endif()
+ ########################################################################
  # Find build dependencies
  ########################################################################
- find_package(PkgConfig)
+-find_package(PkgConfig)
 -if(PKG_CONFIG_FOUND)
 -    pkg_check_modules(LIBUSB libusb-1.0 IMPORTED_TARGET)
 -    if(LIBUSB_LINK_LIBRARIES)
@@ -154,7 +154,7 @@ index 4781b3b..b936fb0 100644
  ########################################################################
  
  ########################################################################
-@@ -108,36 +137,38 @@ message(>>> "PROJECT_BINARY_DIR: " ${PROJECT_BINARY_DIR})
+@@ -108,36 +136,38 @@ message(>>> "PROJECT_BINARY_DIR: " ${PROJECT_BINARY_DIR})
  ########################################################################
  add_library(libfobos_sdr SHARED fobos/fobos_sdr.c)
  
@@ -214,7 +214,7 @@ index 4781b3b..b936fb0 100644
  set_target_properties(libfobos_sdr PROPERTIES DEFINE_SYMBOL "FOBOS_SDR_EXPORTS")
  set_target_properties(libfobos_sdr PROPERTIES OUTPUT_NAME fobos_sdr)
  ########################################################################
-@@ -145,7 +176,7 @@ set_target_properties(libfobos_sdr PROPERTIES OUTPUT_NAME fobos_sdr)
+@@ -145,7 +175,7 @@ set_target_properties(libfobos_sdr PROPERTIES OUTPUT_NAME fobos_sdr)
  ########################################################################
  # Install public header files
  ########################################################################
@@ -223,7 +223,7 @@ index 4781b3b..b936fb0 100644
      FILES fobos/fobos_sdr.h
      DESTINATION include
  )
-@@ -154,38 +185,39 @@ INSTALL(
+@@ -154,7 +184,7 @@ INSTALL(
  ########################################################################
  # Install built library files & utilities
  ########################################################################
@@ -231,10 +231,8 @@ index 4781b3b..b936fb0 100644
 +install(
      TARGETS libfobos_sdr
      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
--) 
-+)
- ########################################################################
- 
+ ) 
+@@ -163,29 +193,30 @@ INSTALL(
  ########################################################################
  # Create Pkg Config File
  ########################################################################
@@ -276,7 +274,7 @@ index 4781b3b..b936fb0 100644
      FILES ${CMAKE_CURRENT_BINARY_DIR}/libfobos_sdr.pc
      DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
  )
-@@ -210,18 +242,8 @@ add_custom_target(uninstall
+@@ -210,18 +241,8 @@ add_custom_target(uninstall
  add_executable(fobos_sdr_devinfo
      eval/fobos_sdr_devinfo_main.c)
  
@@ -295,7 +293,7 @@ index 4781b3b..b936fb0 100644
  target_include_directories(fobos_sdr_devinfo PRIVATE ${CMAKE_SOURCE_DIR}/fobos)
  ########################################################################
  
-@@ -232,16 +254,8 @@ add_executable(fobos_sdr_recorder
+@@ -232,16 +253,8 @@ add_executable(fobos_sdr_recorder
      eval/fobos_sdr_recorder_main.c 
      wav/wav_file.c)
  
@@ -312,7 +310,7 @@ index 4781b3b..b936fb0 100644
  target_include_directories(fobos_sdr_recorder PRIVATE ${CMAKE_SOURCE_DIR})
  
  target_include_directories(fobos_sdr_recorder PRIVATE ${CMAKE_SOURCE_DIR}/fobos)
-@@ -254,16 +268,8 @@ add_executable(fobos_sdr_scanner
+@@ -254,16 +267,8 @@ add_executable(fobos_sdr_scanner
      eval/fobos_sdr_scanner_main.c 
      wav/wav_file.c)
  
@@ -329,7 +327,7 @@ index 4781b3b..b936fb0 100644
  target_include_directories(fobos_sdr_scanner PRIVATE ${CMAKE_SOURCE_DIR})
  
  target_include_directories(fobos_sdr_scanner PRIVATE ${CMAKE_SOURCE_DIR}/fobos)
-@@ -276,16 +282,8 @@ add_executable(fobos_sdr_fwloader
+@@ -276,16 +281,8 @@ add_executable(fobos_sdr_fwloader
      eval/fobos_sdr_fwloader_main.c 
      wav/wav_file.c)
  

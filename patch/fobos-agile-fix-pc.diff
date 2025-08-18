@@ -1,14 +1,14 @@
-From fa7d8ebdfc0dfb3230107be04e1526c2db382e1c Mon Sep 17 00:00:00 2001
+From 1afc87b7bd7d6d999f0b3605db9dbd699764986a Mon Sep 17 00:00:00 2001
 From: "alexey.lysiuk" <alexey.lysiuk@gmail.com>
 Date: Sat, 10 May 2025 13:06:09 +0300
-Subject: [PATCH] Fix name and libs in generated .pc file
+Subject: [PATCH] Fix values in generated .pc file
 
 ---
- libfobos_sdr.pc.in | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ libfobos_sdr.pc.in | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/libfobos_sdr.pc.in b/libfobos_sdr.pc.in
-index 37a9144..af7fbeb 100644
+index 37a9144..31f3605 100644
 --- a/libfobos_sdr.pc.in
 +++ b/libfobos_sdr.pc.in
 @@ -3,9 +3,9 @@ exec_prefix=@exec_prefix@
@@ -19,10 +19,12 @@ index 37a9144..af7fbeb 100644
 +Name: RigExpert Fobos SDR Agile Library
  Description: C Utility Library
  Version: @LIBVER@
- Cflags: -I${includedir}/ @LIBFOBOS_PC_CFLAGS@
+-Cflags: -I${includedir}/ @LIBFOBOS_PC_CFLAGS@
 -Libs: -L${libdir} -lfobos
+-Libs.private: -lusb-1.0 @LIBFOBOS_PC_LIBS@
++Cflags: -I${includedir}/ @LIBFOBOS_SDR_PC_CFLAGS@
 +Libs: -L${libdir} -lfobos_sdr
- Libs.private: -lusb-1.0 @LIBFOBOS_PC_LIBS@
++Libs.private: -lusb-1.0 @LIBFOBOS_SDR_PC_LIBS@
 -- 
 2.39.5 (Apple Git-154)
 
