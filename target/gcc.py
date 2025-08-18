@@ -29,8 +29,8 @@ class ArmNoneEabiBinutilsTarget(base.ConfigureMakeDependencyTarget):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://ftpmirror.gnu.org/binutils/binutils-2.44.tar.bz2',
-            'f66390a661faa117d00fab2e79cf2dc9d097b42cc296bf3f8677d1e7b452dc3a')
+            'https://ftpmirror.gnu.org/gnu/binutils/binutils-2.45.tar.bz2',
+            '1393f90db70c2ebd785fb434d6127f8888c559d5eeb9c006c354b203bab3473e')
 
     def detect(self, state: BuildState) -> bool:
         return state.has_source_file('binutils/doc/binutils.info')
