@@ -25,6 +25,19 @@ from aedi.state import BuildState
 from aedi.target import base
 
 
+class _UsbDependentTarget(base.CMakeSharedDependencyTarget):
+    @staticmethod
+    def _process_pkg_config(_, line: str) -> str:
+        if line.startswith('Cflags: '):
+            # Fix inconsistent libusb include path
+            # * Absolute path when building for native platform
+            # * Missing path when cross-compiling
+            tokens = (token for token in line.split() if 'libusb' not in token)
+            return ' '.join(tokens) + ' -I${includedir}/libusb-1.0\n'
+
+        return line
+
+
 class Ad9361Target(base.CMakeSharedDependencyTarget):
     def __init__(self):
         super().__init__('ad9361')
@@ -42,7 +55,7 @@ class Ad9361Target(base.CMakeSharedDependencyTarget):
         super().configure(state)
 
 
-class AirspyTarget(base.CMakeDependencyTarget):
+class AirspyTarget(_UsbDependentTarget):
     def __init__(self):
         super().__init__('airspy')
 
@@ -52,7 +65,7 @@ class AirspyTarget(base.CMakeDependencyTarget):
             'fcca23911c9a9da71cebeffeba708c59d1d6401eec6eb2dd73cae35b8ea3c613')
 
 
-class AirspyHFTarget(base.CMakeDependencyTarget):
+class AirspyHFTarget(_UsbDependentTarget):
     def __init__(self):
         super().__init__('airspyhf')
 
@@ -264,7 +277,7 @@ class GlfwTarget(base.CMakeSharedDependencyTarget):
         super().configure(state)
 
 
-class HackRFTarget(base.CMakeSharedDependencyTarget):
+class HackRFTarget(_UsbDependentTarget):
     _VERSION = '2024.02.1'
 
     def __init__(self):
@@ -282,7 +295,7 @@ class HackRFTarget(base.CMakeSharedDependencyTarget):
         super().configure(state)
 
 
-class HydraSdrTarget(base.CMakeSharedDependencyTarget):
+class HydraSdrTarget(_UsbDependentTarget):
     def __init__(self):
         super().__init__('hydrasdr')
 
@@ -290,16 +303,6 @@ class HydraSdrTarget(base.CMakeSharedDependencyTarget):
         state.download_source(
             'https://github.com/hydrasdr/rfone_host/archive/refs/tags/v1.0.2.tar.gz',
             '4d5d47bd5f34479073b50229e95be606d6236714c048af97ed356ab090f158ac')
-
-    @staticmethod
-    def _process_pkg_config(_, line: str) -> str:
-        # TODO: figure out why Intel and ARM Cflags don't match
-        cflags = 'Cflags: '
-
-        if line.startswith(cflags):
-            return cflags + '-I${includedir}/libhydrasdr -I${includedir}/libusb-1.0\n'
-
-        return line
 
 
 class IioTarget(base.CMakeSharedDependencyTarget):
