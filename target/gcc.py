@@ -95,6 +95,16 @@ class _GccBaseTarget(base.BuildTarget):
         self.install(state)
 
 
+class ArmNoneEabiGcc13Target(_GccBaseTarget):
+    def __init__(self):
+        super().__init__('arm-none-eabi-gcc-13')
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://ftpmirror.gnu.org/gcc/gcc-13.4.0/gcc-13.4.0.tar.xz',
+            '9c4ce6dbb040568fdc545588ac03c5cbc95a8dbf0c7aa490170843afb59ca8f5')
+
+
 class ArmNoneEabiGcc14Target(_GccBaseTarget):
     def __init__(self):
         super().__init__('arm-none-eabi-gcc-14')
