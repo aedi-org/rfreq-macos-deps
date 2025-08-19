@@ -43,20 +43,15 @@ class ArmNoneEabiBinutilsTarget(base.ConfigureMakeDependencyTarget):
         super().configure(state)
 
 
-class ArmNoneEabiGccTarget(base.BuildTarget):
+class _GccBaseTarget(base.BuildTarget):
     # TODO: Avoid absolute paths in various files
 
-    def __init__(self):
-        super().__init__('arm-none-eabi-gcc')
+    def __init__(self, name=None):
+        super().__init__(name)
         self.prerequisites = ('arm-none-eabi-binutils', 'isl', 'mpc')
 
         # TODO: Add cross-compilation support
         self.multi_platform = False
-
-    def prepare_source(self, state: BuildState):
-        state.download_source(
-            'https://ftpmirror.gnu.org/gcc/gcc-15.2.0/gcc-15.2.0.tar.xz',
-            '438fd996826b0c82485a29da03a72d71d6e3541a83ec702df4271f6fe025d24e')
 
     def detect(self, state: BuildState) -> bool:
         return state.has_source_file('gcc/gcc.h')
@@ -98,6 +93,16 @@ class ArmNoneEabiGccTarget(base.BuildTarget):
 
     def post_build(self, state: BuildState):
         self.install(state)
+
+
+class ArmNoneEabiGccTarget(_GccBaseTarget):
+    def __init__(self):
+        super().__init__('arm-none-eabi-gcc')
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://ftpmirror.gnu.org/gcc/gcc-15.2.0/gcc-15.2.0.tar.xz',
+            '438fd996826b0c82485a29da03a72d71d6e3541a83ec702df4271f6fe025d24e')
 
 
 class ArmNoneEabiNewlibTarget(base.BuildTarget):
