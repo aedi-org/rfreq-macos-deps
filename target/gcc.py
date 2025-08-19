@@ -64,8 +64,14 @@ class ArmNoneEabiGccTarget(base.BuildTarget):
     def configure(self, state: BuildState):
         super().configure(state)
 
+        # Workaround to eliminate some absolute paths
+        source_link = state.build_path / 'source'
+
+        if not source_link.exists():
+            os.symlink(state.source, source_link)
+
         args = (
-            str(state.source / 'configure'),
+            'source/configure',
             '--prefix=' + self.INSTALL_PREFIX,
             '--build=' + state.host(),
             '--disable-libquadmath',
