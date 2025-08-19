@@ -101,8 +101,8 @@ class ArmNoneEabiGcc14Target(_GccBaseTarget):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://ftpmirror.gnu.org/gcc/gcc-14.2.0/gcc-14.2.0.tar.xz',
-            'a7b39bc69cbf9e25826c5a60ab26477001f7c08d85cec04bc0e29cabed6f3cc9')
+            'https://ftpmirror.gnu.org/gcc/gcc-14.3.0/gcc-14.3.0.tar.xz',
+            'e0dc77297625631ac8e50fa92fffefe899a4eb702592da5c32ef04e2293aca3a')
 
 
 class ArmNoneEabiGccTarget(_GccBaseTarget):
