@@ -264,11 +264,11 @@ class FobosAgileTarget(FobosBaseTarget):
     def prepare_source(self, state: BuildState):
         patches = ['fobos-agile-fix-' + suffix for suffix in ('cmake', 'open', 'pc', 'tools')]
         state.download_source(
-            'https://github.com/rigexpert/libfobos-sdr-agile/archive/refs/tags/v.3.0.2.tar.gz',
-            'fa41189cc23b718f73386d05f9b0809127cd21abafc74dd60af600c79e08247a',
+            'https://github.com/rigexpert/libfobos-sdr-agile/archive/refs/tags/v.3.1.0.tar.gz',
+            'fcc05cd6d2ece255b6d8e6996d19f5326789fb5592f67d948ddd112bb621852a',
             patches)
         # Use commit datetime to have a deterministic build, see fobos_sdr_get_api_info() function
-        state.set_build_datetime(2025, 3, 11, 18, 59, 38)
+        state.set_build_datetime(2025, 8, 25, 19, 38, 42)
 
 
 class GlfwTarget(base.CMakeSharedDependencyTarget):
