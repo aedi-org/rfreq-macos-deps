@@ -247,13 +247,12 @@ class FobosTarget(FobosBaseTarget):
         self.installed_tools = ('devinfo', 'fwloader', 'recorder')
 
     def prepare_source(self, state: BuildState):
-        # Unlike the corresponding tag, the following commit is the proper version 2.3.2
         state.download_source(
-            'https://github.com/rigexpert/libfobos/archive/f202101d5cfd40c1fe177513e256d49950c7dd9a.tar.gz',
-            'f5d81fcc12460cbe86fbc0e7a3691b5eb6455141f4d4b588659c6ab69b3cfb6c',
+            'https://github.com/rigexpert/libfobos/archive/refs/tags/v2.4.0.tar.gz',
+            '94bf8087ec55a8f8dfeee78c4379ea0e69f67d40b04c3ee630da79468382394d',
             patches=('fobos-fix-cmake', 'fobos-fix-open'))
         # Use commit datetime to have a deterministic build, see fobos_rx_get_api_info() function
-        state.set_build_datetime(2025, 1, 20, 10, 6, 1)
+        state.set_build_datetime(2025, 8, 25, 18, 18, 50)
 
 
 class FobosAgileTarget(FobosBaseTarget):
