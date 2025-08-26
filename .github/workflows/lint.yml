@@ -31,8 +31,9 @@ jobs:
           VALIDATE_YAML_PRETTIER: false
 
       - name: Bandit
-        run: |
-          pip3 install bandit
+        uses: PyCQA/bandit-action@v1
+        with:
+          exclude: '*/deps/*'
           # [B101:assert_used] Use of assert detected. The enclosed code will be
           #   removed when compiling to optimised byte code.
           # [B310:blacklist] Audit url open for permitted schemes. Allowing use
@@ -43,5 +44,5 @@ jobs:
           #   for execution of untrusted input.
           # [B607:start_process_with_partial_path] Starting a process with a
           #   partial executable path
-          bandit --skip B101,B310,B404,B603,B607 --recursive . --exclude ./deps
+          skips: B101,B310,B404,B603,B607
 ...
