@@ -6,6 +6,6 @@ includedir=${prefix}/include
 Name: RigExpert Fobos SDR Agile Library
 Description: C Utility Library
 Version: 
-Cflags: -I${includedir}/ 
+Cflags: -I${includedir}/
 Libs: -L${libdir} -lfobos_sdr
-Libs.private: -lusb-1.0 
+Libs.private: -lusb-1.0
