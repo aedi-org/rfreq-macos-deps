@@ -8,6 +8,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip lint]')"
     runs-on: ubuntu-24.04
     permissions:
+      security-events: write
       statuses: write
 
     steps:
@@ -15,20 +16,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
-      - name: Super-Linter
-        uses: super-linter/super-linter/slim@v7
-        env:
-          FILTER_REGEX_EXCLUDE: /aedi/packaging/|/core/build\.py$|/deps/|/patch/|/test/
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          USE_FIND_ALGORITHM: true
-          VALIDATE_CHECKOV: false
-          VALIDATE_GIT_COMMITLINT: false
-          VALIDATE_MARKDOWN_PRETTIER: false
-          VALIDATE_NATURAL_LANGUAGE: false
-          VALIDATE_PYTHON_BLACK: false
-          VALIDATE_PYTHON_PYINK: false
-          VALIDATE_YAML_PRETTIER: false
 
       - name: Bandit
         uses: PyCQA/bandit-action@v1
@@ -45,4 +32,18 @@ jobs:
           # [B607:start_process_with_partial_path] Starting a process with a
           #   partial executable path
           skips: B101,B310,B404,B603,B607
+
+      - name: Super-Linter
+        uses: super-linter/super-linter/slim@v7
+        env:
+          FILTER_REGEX_EXCLUDE: /aedi/packaging/|/core/build\.py$|/deps/|/patch/|/test/
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USE_FIND_ALGORITHM: true
+          VALIDATE_CHECKOV: false
+          VALIDATE_GIT_COMMITLINT: false
+          VALIDATE_MARKDOWN_PRETTIER: false
+          VALIDATE_NATURAL_LANGUAGE: false
+          VALIDATE_PYTHON_BLACK: false
+          VALIDATE_PYTHON_PYINK: false
+          VALIDATE_YAML_PRETTIER: false
 ...
