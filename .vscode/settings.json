@@ -4,5 +4,6 @@
     ],
     "python.analysis.extraPaths": [
         "${workspaceFolder}/core"
-    ]
+    ],
+    "python.analysis.typeCheckingMode": "off"
 }
