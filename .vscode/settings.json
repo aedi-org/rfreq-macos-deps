@@ -1,0 +1,8 @@
+{
+    "pylint.args": [
+        "--rcfile=${workspaceFolder}/.github/linters/.python-lint"
+    ],
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/core"
+    ]
+}
