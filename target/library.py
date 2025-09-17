@@ -440,7 +440,7 @@ class PortAudioTarget(base.CMakeDependencyTarget):
 class RfnmAudioTarget(base.CMakeDependencyTarget):
     def __init__(self):
         super().__init__('rfnm')
-        self.prerequisites = ('spdlog',)
+        self.prerequisites = 'spdlog'
 
     def prepare_source(self, state: BuildState):
         # The following code fetches sources from the actual repository

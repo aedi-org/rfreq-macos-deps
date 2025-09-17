@@ -219,7 +219,7 @@ class GmpTarget(base.ConfigureMakeStaticDependencyTarget):
 class IslTarget(base.ConfigureMakeStaticDependencyTarget):
     def __init__(self):
         super().__init__('isl')
-        self.prerequisites = ('gmp',)
+        self.prerequisites = 'gmp'
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -237,7 +237,7 @@ class IslTarget(base.ConfigureMakeStaticDependencyTarget):
 class MpcTarget(base.ConfigureMakeStaticDependencyTarget):
     def __init__(self):
         super().__init__('mpc')
-        self.prerequisites = ('mpfr',)
+        self.prerequisites = 'mpfr'
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -251,7 +251,7 @@ class MpcTarget(base.ConfigureMakeStaticDependencyTarget):
 class MpfrTarget(base.ConfigureMakeStaticDependencyTarget):
     def __init__(self):
         super().__init__('mpfr')
-        self.prerequisites = ('gmp',)
+        self.prerequisites = 'gmp'
 
     def prepare_source(self, state: BuildState):
         state.download_source(
