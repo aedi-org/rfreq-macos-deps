@@ -61,6 +61,7 @@ def targets():
         ArmNoneEabiGcc13Target(),
         ArmNoneEabiGcc14Target(),
         ArmNoneEabiGccTarget(),
+        ArmNoneEabiGdbTarget(),
         ArmNoneEabiNewlibTarget(),
         GmpTarget(),
         IslTarget(),

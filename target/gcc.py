@@ -125,6 +125,52 @@ class ArmNoneEabiGccTarget(_GccBaseTarget):
             '438fd996826b0c82485a29da03a72d71d6e3541a83ec702df4271f6fe025d24e')
 
 
+class ArmNoneEabiGdbTarget(base.BuildTarget):
+    def __init__(self):
+        super().__init__('arm-none-eabi-gdb')
+        self.prerequisites = ('mpfr', 'texinfo')
+
+        # TODO: Add cross-compilation support
+        self.multi_platform = False
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://ftpmirror.gnu.org/gnu/gdb/gdb-16.3.tar.xz',
+            'bcfcd095528a987917acf9fff3f1672181694926cc18d609c99d0042c00224c5')
+
+    def detect(self, state: BuildState) -> bool:
+        return state.has_source_file('gdb/gdb.c')
+
+    def configure(self, state: BuildState):
+        super().configure(state)
+
+        source_link = state.build_path / 'source'
+
+        if not source_link.exists():
+            os.symlink(state.source, source_link)
+
+        args = (
+            'source/configure',
+            '--prefix=' + self.INSTALL_PREFIX,
+            '--build=' + state.host(),
+            '--disable-binutils',
+            '--disable-nls',
+            '--disable-shared',
+            '--enable-tui',
+            '--target=arm-none-eabi',
+            '--with-system-zlib',
+            '--without-zstd',
+        )
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
+
+    def build(self, state: BuildState):
+        args = ('make', '--jobs', state.jobs)
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
+
+    def post_build(self, state: BuildState):
+        self.install(state)
+
+
 class ArmNoneEabiNewlibTarget(base.BuildTarget):
     # TODO: Avoid absolute paths in various files
 
