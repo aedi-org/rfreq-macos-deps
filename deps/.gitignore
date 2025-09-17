@@ -8,6 +8,7 @@
 /markupsafe/
 /rfnm/lib/librfnm.a
 /spdlog/
+/tclap/
 /volk/bin/
 
 # GCC
