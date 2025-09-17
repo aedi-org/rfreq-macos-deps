@@ -19,7 +19,7 @@ jobs:
       - name: Super-Linter
         uses: super-linter/super-linter/slim@v7
         env:
-          FILTER_REGEX_EXCLUDE: /aedi/packaging/|/core/build\.py$|/deps/|/patch/|/test/
+          FILTER_REGEX_EXCLUDE: /.vscode/|/aedi/packaging/|/core/build\.py$|/deps/|/patch/|/test/
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USE_FIND_ALGORITHM: true
           VALIDATE_CHECKOV: false
