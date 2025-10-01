@@ -46,6 +46,7 @@ def _main():
 
     group = builder.argparser.add_argument_group('Options')
     group.add_argument('--static-usb', action='store_true', help='build usb static library, disabled by default')
+    group.add_argument('--dfu-util-speedup', action='store_true', help='build dfu-util with speedup patch')
 
     builder.run(sys.argv[1:])
 

@@ -18,6 +18,7 @@
 
 from aedi.state import BuildState
 from aedi.target import base
+from aedi.utility import apply_unified_diff
 
 
 class DfuUtilTarget(base.ConfigureMakeDependencyTarget):
@@ -33,9 +34,14 @@ class DfuUtilTarget(base.ConfigureMakeDependencyTarget):
         return state.has_source_file('src/dfu_util.h')
 
     def configure(self, state: BuildState):
-        if state.arguments.static_usb:
+        arguments = state.arguments
+
+        if arguments.static_usb:
             # Workaround for missing frameworks pulled by usb
             state.options['LDFLAGS'] += state.run_pkg_config('--libs', 'libusb-1.0')
+
+        if arguments.dfu_util_speedup:
+            apply_unified_diff(state.patch_path / 'dfu-util-speedup.diff', state.source)
 
         super().configure(state)
 

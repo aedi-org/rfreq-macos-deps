@@ -1,0 +1,116 @@
+From 4953f7d4efae738cf00de66caac35357703beb50 Mon Sep 17 00:00:00 2001
+From: Gregwar <g.passault@gmail.com>
+Date: Wed, 16 Dec 2020 16:37:06 +0100
+Subject: [PATCH] Trying to call get_status when it fails, resulting in huge
+ speed bump
+
+Speeding up DFU
+---
+ src/dfu.c      | 56 +++++++++++++++++++++++++++-----------------------
+ src/dfu_load.c |  2 --
+ src/dfuse.c    |  2 --
+ 3 files changed, 30 insertions(+), 30 deletions(-)
+
+diff --git a/src/dfu.c b/src/dfu.c
+index 14d7673..0911898 100644
+--- a/src/dfu.c
++++ b/src/dfu.c
+@@ -133,32 +133,36 @@ int dfu_get_status( struct dfu_if *dif, struct dfu_status *status )
+     unsigned char buffer[6];
+     int result;
+ 
+-    /* Initialize the status data structure */
+-    status->bStatus       = DFU_STATUS_ERROR_UNKNOWN;
+-    status->bwPollTimeout = 0;
+-    status->bState        = STATE_DFU_ERROR;
+-    status->iString       = 0;
+-
+-    result = libusb_control_transfer( dif->dev_handle,
+-          /* bmRequestType */ LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
+-          /* bRequest      */ DFU_GETSTATUS,
+-          /* wValue        */ 0,
+-          /* wIndex        */ dif->interface,
+-          /* Data          */ buffer,
+-          /* wLength       */ 6,
+-                              dfu_timeout );
+-
+-    if( 6 == result ) {
+-        status->bStatus = buffer[0];
+-        if (dif->quirks & QUIRK_POLLTIMEOUT)
+-            status->bwPollTimeout = DEFAULT_POLLTIMEOUT;
+-        else
+-            status->bwPollTimeout = ((0xff & buffer[3]) << 16) |
+-                                    ((0xff & buffer[2]) << 8)  |
+-                                    (0xff & buffer[1]);
+-        status->bState  = buffer[4];
+-        status->iString = buffer[5];
+-    }
++    do {
++        /* Initialize the status data structure */
++        status->bStatus       = DFU_STATUS_ERROR_UNKNOWN;
++        status->bwPollTimeout = 0;
++        status->bState        = STATE_DFU_ERROR;
++        status->iString       = 0;
++
++        result = libusb_control_transfer( dif->dev_handle,
++            /* bmRequestType */ LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
++            /* bRequest      */ DFU_GETSTATUS,
++            /* wValue        */ 0,
++            /* wIndex        */ dif->interface,
++            /* Data          */ buffer,
++            /* wLength       */ 6,
++                                dfu_timeout );
++
++        if( 6 == result ) {
++            status->bStatus = buffer[0];
++            if (dif->quirks & QUIRK_POLLTIMEOUT)
++                status->bwPollTimeout = DEFAULT_POLLTIMEOUT;
++            else
++                status->bwPollTimeout = ((0xff & buffer[3]) << 16) |
++                                        ((0xff & buffer[2]) << 8)  |
++                                        (0xff & buffer[1]);
++            status->bState  = buffer[4];
++            status->iString = buffer[5];
++        } else {
++            milli_sleep(8);
++        }
++    } while (result != 6);
+ 
+     return result;
+ }
+diff --git a/src/dfu_load.c b/src/dfu_load.c
+index 3e9ce0b..ffe58b0 100644
+--- a/src/dfu_load.c
++++ b/src/dfu_load.c
+@@ -141,8 +141,6 @@ off_t dfuload_do_dnload(struct dfu_if *dif, int xfer_size, struct dfu_file *file
+ 					dst.bState == DFU_STATE_dfuERROR)
+ 				break;
+ 
+-			/* Wait while device executes flashing */
+-			milli_sleep(dst.bwPollTimeout);
+ 			if (verbose > 1)
+ 				fprintf(stderr, "Poll timeout %i ms\n", dst.bwPollTimeout);
+ 
+diff --git a/src/dfuse.c b/src/dfuse.c
+index 499ed11..4397b04 100644
+--- a/src/dfuse.c
++++ b/src/dfuse.c
+@@ -259,7 +259,6 @@ static int dfuse_special_command(struct dfu_if *dif, unsigned int address,
+ 		/* wait while command is executed */
+ 		if (verbose > 1)
+ 			fprintf(stderr, "   Poll timeout %i ms\n", polltimeout);
+-		milli_sleep(polltimeout);
+ 		if (command == READ_UNPROTECT)
+ 			return ret;
+ 		/* Workaround for e.g. Black Magic Probe getting stuck */
+@@ -298,7 +297,6 @@ static int dfuse_dnload_chunk(struct dfu_if *dif, unsigned char *data, int size,
+ 			errx(EX_IOERR, "Error during download get_status");
+ 			return ret;
+ 		}
+-		milli_sleep(dst.bwPollTimeout);
+ 	} while (dst.bState != DFU_STATE_dfuDNLOAD_IDLE &&
+ 		 dst.bState != DFU_STATE_dfuERROR &&
+ 		 dst.bState != DFU_STATE_dfuMANIFEST &&
+-- 
+2.51.0
+
