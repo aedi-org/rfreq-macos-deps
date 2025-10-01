@@ -32,6 +32,13 @@ class DfuUtilTarget(base.ConfigureMakeDependencyTarget):
     def detect(self, state: BuildState) -> bool:
         return state.has_source_file('src/dfu_util.h')
 
+    def configure(self, state: BuildState):
+        if state.arguments.static_usb:
+            # Workaround for missing frameworks pulled by usb
+            state.options['LDFLAGS'] += state.run_pkg_config('--libs', 'libusb-1.0')
+
+        super().configure(state)
+
 
 class OrcTarget(base.MesonSharedTarget):
     def __init__(self):
