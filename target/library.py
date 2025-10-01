@@ -547,7 +547,7 @@ class SpdLogTarget(base.CMakeStaticDependencyTarget):
         super().configure(state)
 
 
-class UsbTarget(base.ConfigureMakeSharedDependencyTarget):
+class UsbTarget(base.ConfigureMakeDependencyTarget):
     def __init__(self):
         super().__init__('usb')
 
@@ -558,6 +558,12 @@ class UsbTarget(base.ConfigureMakeSharedDependencyTarget):
 
     def detect(self, state: BuildState) -> bool:
         return state.has_source_file('libusb/libusb.h')
+
+    def configure(self, state: BuildState):
+        disabled_option = 'shared' if state.arguments.static_usb else 'static'
+        state.options[f'--enable-{disabled_option}'] = 'no'
+
+        super().configure(state)
 
 
 class VolkTarget(base.CMakeSharedDependencyTarget):

@@ -43,6 +43,10 @@ import target  # noqa: E402
 def _main():
     builder = aedi.Builder()
     builder.targets += target.targets()
+
+    group = builder.argparser.add_argument_group('Options')
+    group.add_argument('--static-usb', action='store_true', help='build usb static library, disabled by default')
+
     builder.run(sys.argv[1:])
 
 
