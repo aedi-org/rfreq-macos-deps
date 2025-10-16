@@ -612,7 +612,7 @@ class VolkTarget(base.CMakeSharedDependencyTarget):
         self.update_text_file(cmake_module, update_path)
 
 
-class ZstdTarget(base.CMakeSharedDependencyTarget):
+class ZstdTarget(base.CMakeDependencyTarget):
     def __init__(self):
         super().__init__('zstd')
         self.src_root = 'build/cmake'
@@ -624,7 +624,7 @@ class ZstdTarget(base.CMakeSharedDependencyTarget):
 
     def configure(self, state: BuildState):
         opts = state.options
-        opts['ZSTD_BUILD_STATIC'] = 'NO'
-        opts['ZSTD_PROGRAMS_LINK_SHARED'] = 'YES'
+        opts['ZSTD_BUILD_PROGRAMS'] = 'NO'
+        opts['ZSTD_BUILD_SHARED'] = 'NO'
 
         super().configure(state)
