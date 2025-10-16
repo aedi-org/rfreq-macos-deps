@@ -547,6 +547,20 @@ class SpdLogTarget(base.CMakeStaticDependencyTarget):
         super().configure(state)
 
 
+class TclapTarget(base.ConfigureMakeDependencyTarget):
+    def __init__(self):
+        super().__init__('tclap')
+        self.multi_platform = False
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://sourceforge.net/projects/tclap/files/tclap-1.2.5.tar.gz',
+            'bb649f76dae35e8d0dcba4b52acfd4e062d787e6a81b43f7a4b01275153165a6')
+
+    def detect(self, state: BuildState) -> bool:
+        return state.has_source_file('tclap.pc.in')
+
+
 class UsbTarget(base.ConfigureMakeDependencyTarget):
     def __init__(self):
         super().__init__('usb')
