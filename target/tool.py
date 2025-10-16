@@ -79,6 +79,17 @@ class Rtl433Target(base.CMakeDependencyTarget):
             patches='rtl433-force-version')
 
 
+class RtlPowerFftwTarget(base.CMakeDependencyTarget):
+    def __init__(self):
+        super().__init__('rtl_power_fftw')
+        self.prerequisites = 'tclap'
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://github.com/AD-Vega/rtl-power-fftw/archive/cee9a22207ea995bd12adbc6bcfbec92521548b1.tar.gz',
+            '261789c7ef874449c03ca6ce4b6f7e0772e57b22da9bfde4e51ab1c641395635')
+
+
 class StlinkTarget(base.CMakeDependencyTarget):
     def __init__(self):
         super().__init__('stlink')
