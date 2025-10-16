@@ -151,7 +151,6 @@ class SdrPlusPlusBaseTarget(CMakeMainTarget):
             'rtlsdr.0',
             'usb-1.0.0',
             'volk.3.2',
-            'zstd.1'
         ]
 
     def configure(self, state: BuildState):

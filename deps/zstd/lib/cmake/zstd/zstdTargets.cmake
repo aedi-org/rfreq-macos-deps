@@ -19,7 +19,7 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 set(_cmake_targets_defined "")
 set(_cmake_targets_not_defined "")
 set(_cmake_expected_targets "")
-foreach(_cmake_expected_target IN ITEMS zstd::libzstd_shared zstd::libzstd)
+foreach(_cmake_expected_target IN ITEMS zstd::libzstd_static zstd::libzstd)
   list(APPEND _cmake_expected_targets "${_cmake_expected_target}")
   if(TARGET "${_cmake_expected_target}")
     list(APPEND _cmake_targets_defined "${_cmake_expected_target}")
@@ -55,10 +55,10 @@ if(_IMPORT_PREFIX STREQUAL "/")
   set(_IMPORT_PREFIX "")
 endif()
 
-# Create imported target zstd::libzstd_shared
-add_library(zstd::libzstd_shared SHARED IMPORTED)
+# Create imported target zstd::libzstd_static
+add_library(zstd::libzstd_static STATIC IMPORTED)
 
-set_target_properties(zstd::libzstd_shared PROPERTIES
+set_target_properties(zstd::libzstd_static PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
 )
 
@@ -67,7 +67,7 @@ add_library(zstd::libzstd INTERFACE IMPORTED)
 
 set_target_properties(zstd::libzstd PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
-  INTERFACE_LINK_LIBRARIES "zstd::libzstd_shared"
+  INTERFACE_LINK_LIBRARIES "zstd::libzstd_static"
 )
 
 # Load information for each installed configuration.
