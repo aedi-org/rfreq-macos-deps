@@ -72,6 +72,7 @@ def targets():
 
         # Qt
         Qt6BaseTarget(),
+        Qt6SvgTarget(),
 
         # Tools
         DfuUtilTarget(),

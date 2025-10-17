@@ -20,12 +20,25 @@ from aedi.state import BuildState
 from aedi.target import base
 
 
-class Qt6BaseTarget(base.CMakeStaticDependencyTarget):
+class _BaseQt6Target(base.CMakeStaticDependencyTarget):
+    def __init__(self, name=None):
+        super().__init__(name)
+        self.generator = 'Ninja'
+
+    def configure(self, state):
+        opts = state.options
+        opts['FEATURE_framework'] = 'NO'
+        opts['QT_NO_FEATURE_AUTO_RESET'] = 'YES'
+
+        super().configure(state)
+
+
+class Qt6BaseTarget(_BaseQt6Target):
     # TODO: Remove absolute paths from various files inside bin, lib, libexec, mkspecs directories
 
     def __init__(self):
         super().__init__('qt6base')
-        self.generator = 'Ninja'
+        self.project_name = 'QtBase'
 
     def prepare_source(self, state: BuildState):
         state.download_source(
@@ -33,9 +46,18 @@ class Qt6BaseTarget(base.CMakeStaticDependencyTarget):
             'ead4623bcb54a32257c5b3e3a5aec6d16ec96f4cda58d2e003f5a0c16f72046d')
 
     def configure(self, state):
-        opts = state.options
-        opts['FEATURE_framework'] = 'NO'
-        opts['FEATURE_relocatable'] = 'YES'
-        opts['QT_NO_FEATURE_AUTO_RESET'] = 'YES'
-
+        state.options['FEATURE_relocatable'] = 'YES'
         super().configure(state)
+
+
+class Qt6SvgTarget(_BaseQt6Target):
+    def __init__(self):
+        super().__init__('qt6svg')
+
+        self.prerequisites = 'qt6base'
+        self.project_name = 'QtSvg'
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://download.qt.io/official_releases/qt/6.10/6.10.0/submodules/qtsvg-everywhere-src-6.10.0.tar.xz',
+            '5ed2c0e04d5e73ff75c2a2ed92db5dc1788ba70f704fc2b71bc21644beda2533')
