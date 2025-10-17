@@ -25,6 +25,7 @@ from .tool import *
 
 def targets():
     return (
+        LibreVnaGuiTarget(),
         SdrPlusPlusTarget(),
         SrdppExpTarget(),
 

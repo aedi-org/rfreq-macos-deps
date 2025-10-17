@@ -22,13 +22,40 @@ import shutil
 import subprocess
 
 from aedi.state import BuildState
-from aedi.target.base import CMakeMainTarget
+from aedi.target.base import CMakeMainTarget, MakeMainTarget
 from aedi.utility import (
     OS_VERSION_X86_64,
     apply_unified_diff,
     hardcopy,
     hardcopy_directory,
 )
+
+
+class LibreVnaGuiTarget(MakeMainTarget):
+    def __init__(self):
+        super().__init__('librevna-gui')
+
+        self.outputs = ('LibreVNA-GUI.app',)
+        self.prerequisites = 'qt6svg'
+        self.src_root = 'Software/PC_Application/LibreVNA-GUI'
+
+    def detect(self, state: BuildState) -> bool:
+        return state.has_source_file(self.src_root)
+
+    def configure(self, state):
+        super().configure(state)
+        subprocess.run(('qmake', ), check=True, cwd=state.build_path / self.src_root, env=state.environment)
+
+    def post_build(self, state):
+        bundle = self.outputs[0]
+        bundle_path = state.install_path / bundle
+        shutil.copytree(state.build_path / self.src_root / bundle, bundle_path)
+
+        bundle_lib_path = bundle_path / 'Contents/lib'
+        os.mkdir(bundle_lib_path)
+
+        usb_dylib = 'libusb-1.0.0.dylib'
+        hardcopy(state.lib_path / usb_dylib, bundle_lib_path / usb_dylib)
 
 
 class SdrPlusPlusBaseTarget(CMakeMainTarget):
