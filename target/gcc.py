@@ -39,7 +39,6 @@ class ArmNoneEabiBinutilsTarget(base.ConfigureMakeDependencyTarget):
         opts = state.options
         opts['--target'] = 'arm-none-eabi'
         opts['--with-system-zlib'] = None
-        opts['--without-zstd'] = None
         super().configure(state)
 
 
@@ -83,7 +82,6 @@ class _GccBaseTarget(base.BuildTarget):
             '--with-newlib',
             '--with-system-zlib',
             '--without-headers',
-            '--without-zstd',
         )
         subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
 
@@ -159,7 +157,6 @@ class ArmNoneEabiGdbTarget(base.BuildTarget):
             '--enable-tui',
             '--target=arm-none-eabi',
             '--with-system-zlib',
-            '--without-zstd',
         )
         subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
 
