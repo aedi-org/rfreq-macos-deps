@@ -19,6 +19,7 @@
 from .gcc import *
 from .library import *
 from .main import *
+from .qt import *
 from .tool import *
 
 
@@ -68,6 +69,9 @@ def targets():
         MpcTarget(),
         MpfrTarget(),
         TexinfoTarget(),
+
+        # Qt
+        Qt6BaseTarget(),
 
         # Tools
         DfuUtilTarget(),
