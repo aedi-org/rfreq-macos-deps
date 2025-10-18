@@ -6,6 +6,6 @@ includedir=${prefix}/include
 Name: HydraSDR Library
 Description: C Utility Library
 Version: 1.0
-Cflags: -I${includedir}/libhydrasdr -I${includedir}/libusb-1.0
+Cflags: -I${includedir}/libhydrasdr/ -I${includedir}/libusb-1.0
 Libs: -L${libdir} -lhydrasdr
 Libs.private: 
