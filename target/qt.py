@@ -50,6 +50,19 @@ class Qt6BaseTarget(_BaseQt6Target):
         super().configure(state)
 
 
+class Qt6ChartsTarget(_BaseQt6Target):
+    def __init__(self):
+        super().__init__('qt6charts')
+
+        self.prerequisites = 'qt6base'
+        self.project_name = 'QtCharts'
+
+    def prepare_source(self, state: BuildState):
+        state.download_source(
+            'https://download.qt.io/official_releases/qt/6.10/6.10.0/submodules/qtcharts-everywhere-src-6.10.0.tar.xz',
+            '1bff529320e7bf4da19984d70492b19149168be58aa1e77b0868779fb3437f6b')
+
+
 class Qt6SvgTarget(_BaseQt6Target):
     def __init__(self):
         super().__init__('qt6svg')

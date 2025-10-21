@@ -73,6 +73,7 @@ def targets():
 
         # Qt
         Qt6BaseTarget(),
+        Qt6ChartsTarget(),
         Qt6SvgTarget(),
 
         # Tools
