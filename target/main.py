@@ -31,16 +31,13 @@ from aedi.utility import (
 )
 
 
-class LibreVnaGuiTarget(MakeMainTarget):
-    def __init__(self):
-        super().__init__('librevna-gui')
+class _BaseLibreTarget(MakeMainTarget):
+    def __init__(self, name=None):
+        super().__init__(name)
 
-        self.outputs = ('LibreVNA-GUI.app',)
-        self.prerequisites = 'qt6svg'
-        self.src_root = 'Software/PC_Application/LibreVNA-GUI'
-
-    def prepare_source(self, state: BuildState):
-        state.checkout_git('https://github.com/jankae/LibreVNA.git')
+        self.destination = self.DESTINATION_OUTPUT
+        self.prerequisites = ('qt6svg',)
+        self.outputs = ()
 
     def detect(self, state: BuildState) -> bool:
         return state.has_source_file(self.src_root)
@@ -59,6 +56,29 @@ class LibreVnaGuiTarget(MakeMainTarget):
 
         usb_dylib = 'libusb-1.0.0.dylib'
         hardcopy(state.lib_path / usb_dylib, bundle_lib_path / usb_dylib)
+
+
+class LibreCalGuiTarget(_BaseLibreTarget):
+    def __init__(self):
+        super().__init__('librecal-gui')
+
+        self.outputs = ('LibreCAL-GUI.app',)
+        self.prerequisites += ('qt6charts',)
+        self.src_root = 'Software/LibreCAL-GUI'
+
+    def prepare_source(self, state: BuildState):
+        state.checkout_git('https://github.com/jankae/LibreCAL.git')
+
+
+class LibreVnaGuiTarget(_BaseLibreTarget):
+    def __init__(self):
+        super().__init__('librevna-gui')
+
+        self.outputs = ('LibreVNA-GUI.app',)
+        self.src_root = 'Software/PC_Application/LibreVNA-GUI'
+
+    def prepare_source(self, state: BuildState):
+        state.checkout_git('https://github.com/jankae/LibreVNA.git')
 
 
 class SdrPlusPlusBaseTarget(CMakeMainTarget):
