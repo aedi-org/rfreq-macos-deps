@@ -10,6 +10,16 @@
             "args": [
                 "--target=build-prefix"
             ]
+        },
+        {
+            "name": "core/build.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/core/build.py",
+            "console": "internalConsole",
+            "args": [
+                "--target=build-prefix"
+            ]
         }
     ]
 }
