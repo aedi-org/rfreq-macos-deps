@@ -39,6 +39,9 @@ class LibreVnaGuiTarget(MakeMainTarget):
         self.prerequisites = 'qt6svg'
         self.src_root = 'Software/PC_Application/LibreVNA-GUI'
 
+    def prepare_source(self, state: BuildState):
+        state.checkout_git('https://github.com/jankae/LibreVNA.git')
+
     def detect(self, state: BuildState) -> bool:
         return state.has_source_file(self.src_root)
 
