@@ -100,3 +100,10 @@ class StlinkTarget(base.CMakeDependencyTarget):
             'cff760b5c212c2cc480f705b9ca7f3828d6b9c267950c6a547002cd0a1f5f6ac',
             # Build fix patch from https://github.com/stlink-org/stlink/pull/1373/commits
             patches=('stlink-fix-build', 'stlink-relative-chips'))
+
+    def configure(self, state: BuildState):
+        if state.arguments.static_usb:
+            # Workaround for missing frameworks pulled by usb
+            state.options['CMAKE_SHARED_LINKER_FLAGS'] += state.run_pkg_config('--libs', 'libusb-1.0')
+
+        super().configure(state)
