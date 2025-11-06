@@ -22,7 +22,7 @@ import shutil
 import subprocess
 
 from aedi.state import BuildState
-from aedi.target.base import CMakeMainTarget, MakeMainTarget
+from aedi.target.base import BuildTarget, CMakeMainTarget, MakeMainTarget
 from aedi.utility import (
     OS_VERSION_X86_64,
     apply_unified_diff,
@@ -36,33 +36,59 @@ class _BaseLibreTarget(MakeMainTarget):
         super().__init__(name)
 
         self.destination = self.DESTINATION_OUTPUT
-        self.prerequisites = ('qt6svg',)
         self.outputs = ()
+        self.prerequisites = ('qt6svg',)
+        self.project = ''
 
     def detect(self, state: BuildState) -> bool:
         return state.has_source_file(self.src_root)
 
     def configure(self, state):
-        super().configure(state)
-        subprocess.run(('qmake', ), check=True, cwd=state.build_path / self.src_root, env=state.environment)
+        # Skip hard-copying of source code
+        BuildTarget.configure(self, state)
+
+        args = ['qmake']
+
+        if state.xcode:
+            args += ('-spec', 'macx-xcode')
+
+        project_path = state.source / self.src_root / (self.project + '.pro')
+        args.append(project_path)
+
+        subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
+
+    def build(self, state):
+        if state.xcode:
+            args = ('open', self.project + '.xcodeproj')
+            subprocess.run(args, check=True, cwd=state.build_path, env=state.environment)
+        else:
+            # Clear source root as makefile is generated at build path directly
+            self.src_root = ''
+
+            super().build(state)
 
     def post_build(self, state):
-        bundle = self.outputs[0]
-        bundle_path = state.install_path / bundle
-        shutil.copytree(state.build_path / self.src_root / bundle, bundle_path)
+        if state.xcode:
+            CMakeMainTarget.hardcopy_xcode_deps(state, 'usb')
+        else:
+            bundle = self.project + '.app'
+            self.outputs = (bundle,)
 
-        bundle_lib_path = bundle_path / 'Contents/lib'
-        os.mkdir(bundle_lib_path)
+            bundle_path = state.install_path / bundle
+            shutil.copytree(state.build_path / bundle, bundle_path)
 
-        usb_dylib = 'libusb-1.0.0.dylib'
-        hardcopy(state.lib_path / usb_dylib, bundle_lib_path / usb_dylib)
+            bundle_lib_path = bundle_path / 'Contents/lib'
+            os.mkdir(bundle_lib_path)
+
+            usb_dylib = 'libusb-1.0.0.dylib'
+            hardcopy(state.lib_path / usb_dylib, bundle_lib_path / usb_dylib)
 
 
 class LibreCalGuiTarget(_BaseLibreTarget):
     def __init__(self):
         super().__init__('librecal-gui')
 
-        self.outputs = ('LibreCAL-GUI.app',)
+        self.project = 'LibreCAL-GUI'
         self.prerequisites += ('qt6charts',)
         self.src_root = 'Software/LibreCAL-GUI'
 
@@ -74,7 +100,7 @@ class LibreVnaGuiTarget(_BaseLibreTarget):
     def __init__(self):
         super().__init__('librevna-gui')
 
-        self.outputs = ('LibreVNA-GUI.app',)
+        self.project = 'LibreVNA-GUI'
         self.src_root = 'Software/PC_Application/LibreVNA-GUI'
 
     def prepare_source(self, state: BuildState):
