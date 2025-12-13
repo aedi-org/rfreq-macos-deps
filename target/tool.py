@@ -74,8 +74,8 @@ class Rtl433Target(base.CMakeDependencyTarget):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://github.com/merbanan/rtl_433/archive/refs/tags/25.02.tar.gz',
-            '5a409ea10e6d3d7d4aa5ea91d2d6cc92ebb2d730eb229c7b37ade65458223432',
+            'https://github.com/merbanan/rtl_433/archive/refs/tags/25.12.tar.gz',
+            'd283ec7a41a02d398e8918b20b65df3bf684cf4478371830662004005dadcdd2',
             patches='rtl433-force-version')
 
 
