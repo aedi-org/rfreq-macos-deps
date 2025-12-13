@@ -70,7 +70,7 @@ class OrcTarget(base.MesonSharedTarget):
 
 class Rtl433Target(base.CMakeDependencyTarget):
     def __init__(self):
-        super().__init__('rtl433')
+        super().__init__('rtl_433')
 
     def prepare_source(self, state: BuildState):
         state.download_source(
