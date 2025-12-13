@@ -78,6 +78,15 @@ class Rtl433Target(base.CMakeDependencyTarget):
             'd283ec7a41a02d398e8918b20b65df3bf684cf4478371830662004005dadcdd2',
             patches='rtl433-force-version')
 
+    def configure(self, state):
+        if state.arguments.static_usb:
+            opts = state.options
+            # Workaround for missing frameworks pulled by usb
+            opts['CMAKE_EXE_LINKER_FLAGS'] += state.run_pkg_config('--libs', 'libusb-1.0')
+            opts['LibRTLSDR_LIBRARY'] = str(state.lib_path / 'librtlsdr.a')
+
+        super().configure(state)
+
 
 class RtlPowerFftwTarget(base.CMakeDependencyTarget):
     def __init__(self):
