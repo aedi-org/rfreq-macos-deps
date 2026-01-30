@@ -217,7 +217,7 @@ class SdrPlusPlusBaseTarget(CMakeMainTarget):
             'fobos',
             'glfw.3',
             'hackrf.0',
-            'hydrasdr.0',
+            'hydrasdr.1',
             'iio.0',
             'LimeSuite.23.11-1',
             'perseus-sdr.0',
