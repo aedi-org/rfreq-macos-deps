@@ -307,8 +307,8 @@ class HydraSdrTarget(_UsbDependentTarget):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://github.com/hydrasdr/rfone_host/archive/refs/tags/v1.0.3.tar.gz',
-            '9ede1a10d03f47444972b4c84d7d846bfdbe63e0912e96b9131f1d5f5851454b')
+            'https://github.com/hydrasdr/hydrasdr-host/archive/refs/tags/v1.0.4.tar.gz',
+            'e1aaf437e7bfc97141cf73e16d7bf4960b07677cb2ee6787dfd84cd3ad5c2fd7')
 
 
 class IioTarget(base.CMakeSharedDependencyTarget):
