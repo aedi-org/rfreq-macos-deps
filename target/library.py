@@ -290,7 +290,7 @@ class GlfwTarget(base.CMakeSharedDependencyTarget):
 
 
 class HackRFTarget(_UsbDependentTarget):
-    _VERSION = '2024.02.1'
+    _VERSION = '2026.01.3'
 
     def __init__(self):
         super().__init__('hackrf')
@@ -300,7 +300,7 @@ class HackRFTarget(_UsbDependentTarget):
         state.download_source(
             'https://github.com/greatscottgadgets/hackrf/releases/download/'
             f'v{HackRFTarget._VERSION}/hackrf-{HackRFTarget._VERSION}.tar.xz',
-            'd9ced67e6b801cd02c18d0c4654ed18a4bcb36c24a64330c347dfccbd859ad16')
+            'd2b76a1115d9b4df648c29efb2f3c8e80009b7cf9a8adf37abbfdba72101b086')
 
     def configure(self, state: BuildState):
         state.options['RELEASE'] = HackRFTarget._VERSION
