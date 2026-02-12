@@ -17,17 +17,20 @@ jobs:
           submodules: recursive
 
       - name: Super-Linter
-        uses: super-linter/super-linter/slim@v7
+        uses: super-linter/super-linter/slim@v8
         env:
           FILTER_REGEX_EXCLUDE: /.vscode/|/aedi/packaging/|/core/build\.py$|/deps/|/patch/|/test/
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USE_FIND_ALGORITHM: true
+          VALIDATE_BIOME_FORMAT: false
           VALIDATE_CHECKOV: false
           VALIDATE_GIT_COMMITLINT: false
+          VALIDATE_GITHUB_ACTIONS_ZIZMOR: false
           VALIDATE_MARKDOWN_PRETTIER: false
           VALIDATE_NATURAL_LANGUAGE: false
           VALIDATE_PYTHON_BLACK: false
           VALIDATE_PYTHON_PYINK: false
+          VALIDATE_PYTHON_RUFF_FORMAT: false
           VALIDATE_YAML_PRETTIER: false
 
       - name: Bandit
