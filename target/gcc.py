@@ -1,6 +1,6 @@
 #
 #    Module to build radio frequency libraries and tools for macOS
-#    Copyright (C) 2025-2026 Alexey Lysiuk
+#    Copyright (C) 2020-2026 Alexey Lysiuk
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
