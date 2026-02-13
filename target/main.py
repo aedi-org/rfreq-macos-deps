@@ -226,7 +226,7 @@ class SdrPlusPlusBaseTarget(CMakeMainTarget):
             'rtaudio.7',
             'rtlsdr.0',
             'usb-1.0.0',
-            'volk.3.2',
+            'volk.3.3',
         ]
 
     def configure(self, state: BuildState):
