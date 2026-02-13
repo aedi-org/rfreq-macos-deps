@@ -8,12 +8,12 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 # Import target "HydraSDR::hydrasdr" for configuration "Release"
 set_property(TARGET HydraSDR::hydrasdr APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(HydraSDR::hydrasdr PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libhydrasdr.1.0.4.dylib"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libhydrasdr.1.1.0.dylib"
   IMPORTED_SONAME_RELEASE "/usr/local/lib/libhydrasdr.1.dylib"
   )
 
 list(APPEND _cmake_import_check_targets HydraSDR::hydrasdr )
-list(APPEND _cmake_import_check_files_for_HydraSDR::hydrasdr "${_IMPORT_PREFIX}/lib/libhydrasdr.1.0.4.dylib" )
+list(APPEND _cmake_import_check_files_for_HydraSDR::hydrasdr "${_IMPORT_PREFIX}/lib/libhydrasdr.1.1.0.dylib" )
 
 # Import target "HydraSDR::hydrasdr_static" for configuration "Release"
 set_property(TARGET HydraSDR::hydrasdr_static APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
