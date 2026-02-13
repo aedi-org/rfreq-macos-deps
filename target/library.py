@@ -587,8 +587,8 @@ class VolkTarget(base.CMakeSharedDependencyTarget):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://github.com/gnuradio/volk/releases/download/v3.2.0/volk-3.2.0.tar.gz',
-            '9c6c11ec8e08aa37ce8ef7c5bcbdee60bac2428faeffb07d072e572ed05eb8cd',
+            'https://github.com/gnuradio/volk/releases/download/v3.3.0/volk-3.3.0.tar.gz',
+            '89d11c8c8d4213b1b780354cfdbda1fed0c0b65c82847e710638eb3e21418628',
             patches='volk-no-abspaths')
 
     def configure(self, state: BuildState):
@@ -603,7 +603,7 @@ class VolkTarget(base.CMakeSharedDependencyTarget):
 
         # Patch CMake module to replace absolute path
         soname_prefix = '  IMPORTED_SONAME_RELEASE '
-        soname_path = soname_prefix + '"${CMAKE_CURRENT_LIST_DIR}/../../libvolk.3.2.dylib"\n'
+        soname_path = soname_prefix + '"${CMAKE_CURRENT_LIST_DIR}/../../libvolk.3.3.dylib"\n'
 
         def update_path(line: str):
             return soname_path if line.startswith(soname_prefix) else line
