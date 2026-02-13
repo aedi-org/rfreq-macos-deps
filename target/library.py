@@ -384,8 +384,8 @@ class MarkupSafeTarget(base.BuildTarget):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://github.com/pallets/markupsafe/releases/download/3.0.2/markupsafe-3.0.2.tar.gz',
-            'ee55d3edf80167e48ea11a923c7386f4669df67d7994554387f84e7d8b0a2bf0')
+            'https://github.com/pallets/markupsafe/releases/download/3.0.3/markupsafe-3.0.3.tar.gz',
+            '722695808f4b6457b320fdc131280796bdceb04ab50fe1795cd540799ebe1698')
 
     def detect(self, state: BuildState) -> bool:
         return state.has_source_file('markupsafe/_native.py')
