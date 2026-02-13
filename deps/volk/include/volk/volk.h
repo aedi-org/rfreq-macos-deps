@@ -180,6 +180,22 @@ extern VOLK_API volk_func_desc_t volk_16i_s32f_convert_32f_get_func_desc(void);
 
 
 //! A function pointer to the dispatcher implementation
+extern VOLK_API p_16i_x2_add_saturated_16i volk_16i_x2_add_saturated_16i;
+
+//! A function pointer to the fastest aligned implementation
+extern VOLK_API p_16i_x2_add_saturated_16i volk_16i_x2_add_saturated_16i_a;
+
+//! A function pointer to the fastest unaligned implementation
+extern VOLK_API p_16i_x2_add_saturated_16i volk_16i_x2_add_saturated_16i_u;
+
+//! Call into a specific implementation given by name
+extern VOLK_API void volk_16i_x2_add_saturated_16i_manual(int16_t*  outVector, const int16_t*  inVectorA, const int16_t*  inVectorB, unsigned int  num_points, const char* impl_name);
+
+//! Get description parameters for this kernel
+extern VOLK_API volk_func_desc_t volk_16i_x2_add_saturated_16i_get_func_desc(void);
+
+
+//! A function pointer to the dispatcher implementation
 extern VOLK_API p_16i_x4_quad_max_star_16i volk_16i_x4_quad_max_star_16i __attribute__((deprecated));
 
 //! A function pointer to the fastest aligned implementation
@@ -404,6 +420,22 @@ extern VOLK_API volk_func_desc_t volk_16u_byteswappuppet_16u_get_func_desc(void)
 
 
 //! A function pointer to the dispatcher implementation
+extern VOLK_API p_16u_x2_add_saturated_16u volk_16u_x2_add_saturated_16u;
+
+//! A function pointer to the fastest aligned implementation
+extern VOLK_API p_16u_x2_add_saturated_16u volk_16u_x2_add_saturated_16u_a;
+
+//! A function pointer to the fastest unaligned implementation
+extern VOLK_API p_16u_x2_add_saturated_16u volk_16u_x2_add_saturated_16u_u;
+
+//! Call into a specific implementation given by name
+extern VOLK_API void volk_16u_x2_add_saturated_16u_manual(uint16_t*  outVector, const uint16_t*  inVectorA, const uint16_t*  inVectorB, unsigned int  num_points, const char* impl_name);
+
+//! Get description parameters for this kernel
+extern VOLK_API volk_func_desc_t volk_16u_x2_add_saturated_16u_get_func_desc(void);
+
+
+//! A function pointer to the dispatcher implementation
 extern VOLK_API p_32f_64f_add_64f volk_32f_64f_add_64f;
 
 //! A function pointer to the fastest aligned implementation
@@ -589,7 +621,7 @@ extern VOLK_API p_32f_cos_32f volk_32f_cos_32f_a;
 extern VOLK_API p_32f_cos_32f volk_32f_cos_32f_u;
 
 //! Call into a specific implementation given by name
-extern VOLK_API void volk_32f_cos_32f_manual(float*  cosVector, const float*  inVector, unsigned int  num_points, const char* impl_name);
+extern VOLK_API void volk_32f_cos_32f_manual(float*  bVector, const float*  aVector, unsigned int  num_points, const char* impl_name);
 
 //! Get description parameters for this kernel
 extern VOLK_API volk_func_desc_t volk_32f_cos_32f_get_func_desc(void);
@@ -1021,10 +1053,26 @@ extern VOLK_API p_32f_sin_32f volk_32f_sin_32f_a;
 extern VOLK_API p_32f_sin_32f volk_32f_sin_32f_u;
 
 //! Call into a specific implementation given by name
-extern VOLK_API void volk_32f_sin_32f_manual(float*  sinVector, const float*  inVector, unsigned int  num_points, const char* impl_name);
+extern VOLK_API void volk_32f_sin_32f_manual(float*  bVector, const float*  aVector, unsigned int  num_points, const char* impl_name);
 
 //! Get description parameters for this kernel
 extern VOLK_API volk_func_desc_t volk_32f_sin_32f_get_func_desc(void);
+
+
+//! A function pointer to the dispatcher implementation
+extern VOLK_API p_32f_sincos_32f_x2 volk_32f_sincos_32f_x2;
+
+//! A function pointer to the fastest aligned implementation
+extern VOLK_API p_32f_sincos_32f_x2 volk_32f_sincos_32f_x2_a;
+
+//! A function pointer to the fastest unaligned implementation
+extern VOLK_API p_32f_sincos_32f_x2 volk_32f_sincos_32f_x2_u;
+
+//! Call into a specific implementation given by name
+extern VOLK_API void volk_32f_sincos_32f_x2_manual(float*  sinVector, float*  cosVector, const float*  inVector, unsigned int  num_points, const char* impl_name);
+
+//! Get description parameters for this kernel
+extern VOLK_API volk_func_desc_t volk_32f_sincos_32f_x2_get_func_desc(void);
 
 
 //! A function pointer to the dispatcher implementation
@@ -2100,6 +2148,22 @@ extern VOLK_API volk_func_desc_t volk_64f_x2_add_64f_get_func_desc(void);
 
 
 //! A function pointer to the dispatcher implementation
+extern VOLK_API p_64f_x2_dot_prod_64f volk_64f_x2_dot_prod_64f;
+
+//! A function pointer to the fastest aligned implementation
+extern VOLK_API p_64f_x2_dot_prod_64f volk_64f_x2_dot_prod_64f_a;
+
+//! A function pointer to the fastest unaligned implementation
+extern VOLK_API p_64f_x2_dot_prod_64f volk_64f_x2_dot_prod_64f_u;
+
+//! Call into a specific implementation given by name
+extern VOLK_API void volk_64f_x2_dot_prod_64f_manual(double*  result, const double*  input, const double*  taps, unsigned int  num_points, const char* impl_name);
+
+//! Get description parameters for this kernel
+extern VOLK_API volk_func_desc_t volk_64f_x2_dot_prod_64f_get_func_desc(void);
+
+
+//! A function pointer to the dispatcher implementation
 extern VOLK_API p_64f_x2_max_64f volk_64f_x2_max_64f;
 
 //! A function pointer to the fastest aligned implementation
@@ -2244,6 +2308,22 @@ extern VOLK_API volk_func_desc_t volk_8i_s32f_convert_32f_get_func_desc(void);
 
 
 //! A function pointer to the dispatcher implementation
+extern VOLK_API p_8i_x2_add_saturated_8i volk_8i_x2_add_saturated_8i;
+
+//! A function pointer to the fastest aligned implementation
+extern VOLK_API p_8i_x2_add_saturated_8i volk_8i_x2_add_saturated_8i_a;
+
+//! A function pointer to the fastest unaligned implementation
+extern VOLK_API p_8i_x2_add_saturated_8i volk_8i_x2_add_saturated_8i_u;
+
+//! Call into a specific implementation given by name
+extern VOLK_API void volk_8i_x2_add_saturated_8i_manual(int8_t*  outVector, const int8_t*  inVectorA, const int8_t*  inVectorB, unsigned int  num_points, const char* impl_name);
+
+//! Get description parameters for this kernel
+extern VOLK_API volk_func_desc_t volk_8i_x2_add_saturated_8i_get_func_desc(void);
+
+
+//! A function pointer to the dispatcher implementation
 extern VOLK_API p_8ic_deinterleave_16i_x2 volk_8ic_deinterleave_16i_x2;
 
 //! A function pointer to the fastest aligned implementation
@@ -2369,6 +2449,22 @@ extern VOLK_API void volk_8u_conv_k7_r2puppet_8u_manual(unsigned char*  dec, uns
 
 //! Get description parameters for this kernel
 extern VOLK_API volk_func_desc_t volk_8u_conv_k7_r2puppet_8u_get_func_desc(void);
+
+
+//! A function pointer to the dispatcher implementation
+extern VOLK_API p_8u_x2_add_saturated_8u volk_8u_x2_add_saturated_8u;
+
+//! A function pointer to the fastest aligned implementation
+extern VOLK_API p_8u_x2_add_saturated_8u volk_8u_x2_add_saturated_8u_a;
+
+//! A function pointer to the fastest unaligned implementation
+extern VOLK_API p_8u_x2_add_saturated_8u volk_8u_x2_add_saturated_8u_u;
+
+//! Call into a specific implementation given by name
+extern VOLK_API void volk_8u_x2_add_saturated_8u_manual(uint8_t*  outVector, const uint8_t*  inVectorA, const uint8_t*  inVectorB, unsigned int  num_points, const char* impl_name);
+
+//! Get description parameters for this kernel
+extern VOLK_API volk_func_desc_t volk_8u_x2_add_saturated_8u_get_func_desc(void);
 
 
 //! A function pointer to the dispatcher implementation

@@ -1,0 +1,271 @@
+/* -*- c++ -*- */
+/*
+ * Copyright 2024-2026 Magnus Lundmark <magnuslundmark@gmail.com>
+ *
+ * This file is part of VOLK
+ *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ */
+
+/*
+ * This file is intended to hold AVX512 intrinsics.
+ * They should be used in VOLK kernels to avoid copy-paste.
+ */
+
+#ifndef INCLUDE_VOLK_VOLK_AVX512_INTRINSICS_H_
+#define INCLUDE_VOLK_VOLK_AVX512_INTRINSICS_H_
+#include <immintrin.h>
+
+////////////////////////////////////////////////////////////////////////
+// Newton-Raphson refined reciprocal square root: 1/sqrt(a)
+// One iteration doubles precision from ~12-bit to ~24-bit
+// x1 = x0 * (1.5 - 0.5 * a * x0^2)
+// Handles edge cases: +0 → +Inf, +Inf → 0
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_rsqrt_nr_ps(const __m512 a)
+{
+    const __m512 HALF = _mm512_set1_ps(0.5f);
+    const __m512 THREE_HALFS = _mm512_set1_ps(1.5f);
+
+    const __m512 x0 = _mm512_rsqrt14_ps(a); // +Inf for +0, 0 for +Inf
+
+    // Newton-Raphson: x1 = x0 * (1.5 - 0.5 * a * x0^2)
+    __m512 x1 = _mm512_mul_ps(
+        x0, _mm512_fnmadd_ps(HALF, _mm512_mul_ps(_mm512_mul_ps(x0, x0), a), THREE_HALFS));
+
+    // For +0 and +Inf inputs, x0 is correct but NR produces NaN due to Inf*0
+    // Blend: use x0 where a == +0 or a == +Inf, else use x1
+    __m512i a_si = _mm512_castps_si512(a);
+    __mmask16 zero_mask = _mm512_cmpeq_epi32_mask(a_si, _mm512_setzero_si512());
+    __mmask16 inf_mask = _mm512_cmpeq_epi32_mask(a_si, _mm512_set1_epi32(0x7F800000));
+    return _mm512_mask_blend_ps(zero_mask | inf_mask, x1, x0);
+}
+
+////////////////////////////////////////////////////////////////////////
+// Place real parts of two complex vectors in output
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_real(const __m512 z1, const __m512 z2)
+{
+    const __m512i idx =
+        _mm512_set_epi32(30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0);
+    return _mm512_permutex2var_ps(z1, idx, z2);
+}
+
+////////////////////////////////////////////////////////////////////////
+// Place imaginary parts of two complex vectors in output
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_imag(const __m512 z1, const __m512 z2)
+{
+    const __m512i idx =
+        _mm512_set_epi32(31, 29, 27, 25, 23, 21, 19, 17, 15, 13, 11, 9, 7, 5, 3, 1);
+    return _mm512_permutex2var_ps(z1, idx, z2);
+}
+
+////////////////////////////////////////////////////////////////////////
+// Approximate arctan(x) via polynomial expansion on the interval [-1, 1]
+// Maximum relative error ~6.5e-7
+// Polynomial evaluated via Horner's method
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_arctan_poly_avx512(const __m512 x)
+{
+    const __m512 a1 = _mm512_set1_ps(+0x1.ffffeap-1f);
+    const __m512 a3 = _mm512_set1_ps(-0x1.55437p-2f);
+    const __m512 a5 = _mm512_set1_ps(+0x1.972be6p-3f);
+    const __m512 a7 = _mm512_set1_ps(-0x1.1436ap-3f);
+    const __m512 a9 = _mm512_set1_ps(+0x1.5785aap-4f);
+    const __m512 a11 = _mm512_set1_ps(-0x1.2f3004p-5f);
+    const __m512 a13 = _mm512_set1_ps(+0x1.01a37cp-7f);
+
+    const __m512 x_times_x = _mm512_mul_ps(x, x);
+    __m512 arctan;
+    arctan = a13;
+    arctan = _mm512_fmadd_ps(x_times_x, arctan, a11);
+    arctan = _mm512_fmadd_ps(x_times_x, arctan, a9);
+    arctan = _mm512_fmadd_ps(x_times_x, arctan, a7);
+    arctan = _mm512_fmadd_ps(x_times_x, arctan, a5);
+    arctan = _mm512_fmadd_ps(x_times_x, arctan, a3);
+    arctan = _mm512_fmadd_ps(x_times_x, arctan, a1);
+    arctan = _mm512_mul_ps(x, arctan);
+
+    return arctan;
+}
+
+////////////////////////////////////////////////////////////////////////
+// Approximate arcsin(x) via polynomial expansion
+// P(u) such that asin(x) = x * P(x^2) on |x| <= 0.5
+// Maximum relative error ~1.5e-6
+// Polynomial evaluated via Horner's method
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_arcsin_poly_avx512(const __m512 x)
+{
+    const __m512 c0 = _mm512_set1_ps(0x1.ffffcep-1f);
+    const __m512 c1 = _mm512_set1_ps(0x1.55b648p-3f);
+    const __m512 c2 = _mm512_set1_ps(0x1.24d192p-4f);
+    const __m512 c3 = _mm512_set1_ps(0x1.0a788p-4f);
+
+    const __m512 u = _mm512_mul_ps(x, x);
+    __m512 p = c3;
+    p = _mm512_fmadd_ps(u, p, c2);
+    p = _mm512_fmadd_ps(u, p, c1);
+    p = _mm512_fmadd_ps(u, p, c0);
+
+    return _mm512_mul_ps(x, p);
+}
+
+////////////////////////////////////////////////////////////////////////
+// Complex multiply: (a+bi) * (c+di) = (ac-bd) + i(ad+bc)
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_complexmul_ps(const __m512 x, const __m512 y)
+{
+    const __m512 yl = _mm512_moveldup_ps(y);  // Load yl with cr,cr,dr,dr ...
+    const __m512 yh = _mm512_movehdup_ps(y);  // Load yh with ci,ci,di,di ...
+    const __m512 tmp1 = _mm512_mul_ps(x, yl); // tmp1 = ar*cr,ai*cr,br*dr,bi*dr ...
+    const __m512 x_swap =
+        _mm512_permute_ps(x, 0xB1); // Re-arrange x to be ai,ar,bi,br ...
+
+    // Compute ar*cr-ai*ci, ai*cr+ar*ci, br*dr-bi*di, bi*dr+br*di using FMA
+    // We need: tmp1 - (x_swap * yh) for real parts, tmp1 + (x_swap * yh) for imag parts
+    // This is accomplished with addsub pattern
+    const __m512 tmp2 = _mm512_mul_ps(x_swap, yh); // ai*ci,ar*ci,bi*di,br*di
+
+    // Use mask to create addsub behavior: subtract on even indices, add on odd
+    const __mmask16 addsub_mask = 0x5555; // 0101010101010101 in binary
+    return _mm512_mask_sub_ps(_mm512_add_ps(tmp1, tmp2), addsub_mask, tmp1, tmp2);
+}
+
+////////////////////////////////////////////////////////////////////////
+// Complex conjugate multiply: (a+bi) * conj(c+di) = (ac+bd) + i(bc-ad)
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_complexconjugatemul_ps(const __m512 x, const __m512 y)
+{
+    // Compute (a+bi) * conj(c+di) = (a+bi) * (c-di) = (ac+bd) + i(bc-ad)
+    const __m512 nswap = _mm512_permute_ps(x, 0xb1); // Swap real/imag: bi, ar, ...
+    const __m512 dreal = _mm512_moveldup_ps(y);      // cr, cr, dr, dr, ...
+    const __m512 dimag = _mm512_movehdup_ps(y);      // ci, ci, di, di, ...
+
+    // Use integer xor for conjugation (AVX512F compatible)
+    const __m512i conjugator_i = _mm512_setr_epi32(0,
+                                                   0x80000000,
+                                                   0,
+                                                   0x80000000,
+                                                   0,
+                                                   0x80000000,
+                                                   0,
+                                                   0x80000000,
+                                                   0,
+                                                   0x80000000,
+                                                   0,
+                                                   0x80000000,
+                                                   0,
+                                                   0x80000000,
+                                                   0,
+                                                   0x80000000);
+    const __m512 dimagconj = _mm512_castsi512_ps(_mm512_xor_epi32(
+        _mm512_castps_si512(dimag), conjugator_i)); // ci, -ci, di, -di, ...
+
+    // Use FMA: x*dreal + nswap*dimagconj
+    return _mm512_fmadd_ps(nswap, dimagconj, _mm512_mul_ps(x, dreal));
+}
+
+////////////////////////////////////////////////////////////////////////
+// Normalize complex vector: divide each complex number by its magnitude
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_normalize_ps(const __m512 val)
+{
+    // Square the values: [r0^2, i0^2, r1^2, i1^2, ...]
+    __m512 tmp1 = _mm512_mul_ps(val, val);
+
+    // Swap adjacent elements to get [i0^2, r0^2, i1^2, r1^2, ...]
+    const __m512 tmp1_swapped = _mm512_permute_ps(tmp1, 0xB1);
+
+    // Add to get [r0^2+i0^2, i0^2+r0^2, r1^2+i1^2, i1^2+r1^2, ...]
+    __m512 mag_sq = _mm512_add_ps(tmp1, tmp1_swapped);
+
+    // Take square root to get magnitude
+    const __m512 mag = _mm512_sqrt_ps(mag_sq);
+
+    // Divide by magnitude
+    return _mm512_div_ps(val, mag);
+}
+
+////////////////////////////////////////////////////////////////////////
+// Minimax polynomial for sin(x) on [-pi/4, pi/4]
+// Coefficients via Remez algorithm (Sollya)
+// Max |error| < 7.3e-9
+// sin(x) = x + x^3 * (s1 + x^2 * (s2 + x^2 * s3))
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_sin_poly_avx512(const __m512 x)
+{
+    const __m512 s1 = _mm512_set1_ps(-0x1.555552p-3f);
+    const __m512 s2 = _mm512_set1_ps(+0x1.110be2p-7f);
+    const __m512 s3 = _mm512_set1_ps(-0x1.9ab22ap-13f);
+
+    const __m512 x2 = _mm512_mul_ps(x, x);
+    const __m512 x3 = _mm512_mul_ps(x2, x);
+
+    __m512 poly = _mm512_fmadd_ps(x2, s3, s2);
+    poly = _mm512_fmadd_ps(x2, poly, s1);
+    return _mm512_fmadd_ps(x3, poly, x);
+}
+
+////////////////////////////////////////////////////////////////////////
+// Minimax polynomial for cos(x) on [-pi/4, pi/4]
+// Coefficients via Remez algorithm (Sollya)
+// Max |error| < 1.1e-7
+// cos(x) = 1 + x^2 * (c1 + x^2 * (c2 + x^2 * c3))
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_cos_poly_avx512(const __m512 x)
+{
+    const __m512 c1 = _mm512_set1_ps(-0x1.fffff4p-2f);
+    const __m512 c2 = _mm512_set1_ps(+0x1.554a46p-5f);
+    const __m512 c3 = _mm512_set1_ps(-0x1.661be2p-10f);
+    const __m512 one = _mm512_set1_ps(1.0f);
+
+    const __m512 x2 = _mm512_mul_ps(x, x);
+
+    __m512 poly = _mm512_fmadd_ps(x2, c3, c2);
+    poly = _mm512_fmadd_ps(x2, poly, c1);
+    return _mm512_fmadd_ps(x2, poly, one);
+}
+
+////////////////////////////////////////////////////////////////////////
+// Polynomial coefficients for log2(x)/(x-1) on [1, 2]
+// Generated with Sollya: remez(log2(x)/(x-1), 6, [1+1b-20, 2])
+// Max error: ~1.55e-6
+//
+// Usage: log2(x) ≈ poly(x) * (x - 1) for x ∈ [1, 2]
+// Polynomial evaluated via Horner's method with FMA
+// Requires AVX512F
+////////////////////////////////////////////////////////////////////////
+static inline __m512 _mm512_log2_poly_avx512(const __m512 x)
+{
+    const __m512 c0 = _mm512_set1_ps(+0x1.a8a726p+1f);
+    const __m512 c1 = _mm512_set1_ps(-0x1.0b7f7ep+2f);
+    const __m512 c2 = _mm512_set1_ps(+0x1.05d9ccp+2f);
+    const __m512 c3 = _mm512_set1_ps(-0x1.4d476cp+1f);
+    const __m512 c4 = _mm512_set1_ps(+0x1.04fc3ap+0f);
+    const __m512 c5 = _mm512_set1_ps(-0x1.c97982p-3f);
+    const __m512 c6 = _mm512_set1_ps(+0x1.57aa42p-6f);
+
+    // Horner's method with FMA: c0 + x*(c1 + x*(c2 + ...))
+    __m512 poly = c6;
+    poly = _mm512_fmadd_ps(poly, x, c5);
+    poly = _mm512_fmadd_ps(poly, x, c4);
+    poly = _mm512_fmadd_ps(poly, x, c3);
+    poly = _mm512_fmadd_ps(poly, x, c2);
+    poly = _mm512_fmadd_ps(poly, x, c1);
+    poly = _mm512_fmadd_ps(poly, x, c0);
+    return poly;
+}
+
+#endif /* INCLUDE_VOLK_VOLK_AVX512_INTRINSICS_H_ */

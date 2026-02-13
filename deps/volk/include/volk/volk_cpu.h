@@ -43,6 +43,7 @@ struct VOLK_CPU {
     int (*has_avx2) ();
     int (*has_avx512f) ();
     int (*has_avx512cd) ();
+    int (*has_avx512dq) ();
     int (*has_riscv64) ();
     int (*has_rvv) ();
     int (*has_rvvseg) ();

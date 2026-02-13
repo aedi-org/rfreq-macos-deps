@@ -1,7 +1,7 @@
 /* -*- c++ -*- */
 /*
  * Copyright 2012, 2014 Free Software Foundation, Inc.
- * Copyright 2023 Magnus Lundmark <magnuslundmark@gmail.com>
+ * Copyright 2023, 2024 Magnus Lundmark <magnuslundmark@gmail.com>
  *
  * This file is part of VOLK
  *
@@ -72,8 +72,8 @@ static inline void volk_32fc_s32f_atan2_32f_generic(float* outputVector,
     float* outPtr = outputVector;
     const float* inPtr = (float*)inputVector;
     const float invNormalizeFactor = 1.f / normalizeFactor;
-    unsigned int number = 0;
-    for (; number < num_points; number++) {
+
+    for (unsigned int number = 0; number < num_points; number++) {
         const float real = *inPtr++;
         const float imag = *inPtr++;
         *outPtr++ = atan2f(imag, real) * invNormalizeFactor;
@@ -91,14 +91,118 @@ static inline void volk_32fc_s32f_atan2_32f_polynomial(float* outputVector,
     float* outPtr = outputVector;
     const float* inPtr = (float*)inputVector;
     const float invNormalizeFactor = 1.f / normalizeFactor;
-    unsigned int number = 0;
-    for (; number < num_points; number++) {
+
+    for (unsigned int number = 0; number < num_points; number++) {
         const float x = *inPtr++;
         const float y = *inPtr++;
         *outPtr++ = volk_atan2(y, x) * invNormalizeFactor;
     }
 }
 #endif /* LV_HAVE_GENERIC */
+
+#if LV_HAVE_AVX512F && LV_HAVE_AVX512DQ
+#include <immintrin.h>
+#include <volk/volk_avx512_intrinsics.h>
+static inline void volk_32fc_s32f_atan2_32f_a_avx512dq(float* outputVector,
+                                                       const lv_32fc_t* complexVector,
+                                                       const float normalizeFactor,
+                                                       unsigned int num_points)
+{
+    const float* in = (float*)complexVector;
+    float* out = (float*)outputVector;
+
+    const float invNormalizeFactor = 1.f / normalizeFactor;
+    const __m512 vinvNormalizeFactor = _mm512_set1_ps(invNormalizeFactor);
+    const __m512 pi = _mm512_set1_ps(0x1.921fb6p1f);
+    const __m512 pi_2 = _mm512_set1_ps(0x1.921fb6p0f);
+    const __m512 abs_mask = _mm512_castsi512_ps(_mm512_set1_epi32(0x7FFFFFFF));
+    const __m512 sign_mask = _mm512_castsi512_ps(_mm512_set1_epi32(0x80000000));
+
+    unsigned int number = 0;
+    const unsigned int sixteenth_points = num_points / 16;
+    for (; number < sixteenth_points; number++) {
+        __m512 z1 = _mm512_load_ps(in);
+        in += 16;
+        __m512 z2 = _mm512_load_ps(in);
+        in += 16;
+
+        __m512 x = _mm512_real(z1, z2);
+        __m512 y = _mm512_imag(z1, z2);
+
+        // Detect NaN in original inputs before division
+        __mmask16 input_nan_mask = _mm512_cmp_ps_mask(x, x, _CMP_UNORD_Q) |
+                                   _mm512_cmp_ps_mask(y, y, _CMP_UNORD_Q);
+
+        // Handle infinity cases per IEEE 754
+        const __m512 zero = _mm512_setzero_ps();
+        const __m512 pi_4 = _mm512_set1_ps(0x1.921fb6p-1f);      // π/4
+        const __m512 three_pi_4 = _mm512_set1_ps(0x1.2d97c8p1f); // 3π/4
+
+        __mmask16 y_inf_mask = _mm512_fpclass_ps_mask(y, 0x18); // ±inf
+        __mmask16 x_inf_mask = _mm512_fpclass_ps_mask(x, 0x18); // ±inf
+        __mmask16 x_pos_mask = _mm512_cmp_ps_mask(x, zero, _CMP_GT_OS);
+
+        // Build infinity result
+        __m512 inf_result = zero;
+        // Both infinite: ±π/4 or ±3π/4
+        __mmask16 both_inf = y_inf_mask & x_inf_mask;
+        __m512 both_inf_result = _mm512_mask_blend_ps(x_pos_mask, three_pi_4, pi_4);
+        both_inf_result = _mm512_or_ps(both_inf_result, _mm512_and_ps(y, sign_mask));
+        inf_result = _mm512_mask_blend_ps(both_inf, inf_result, both_inf_result);
+
+        // y infinite, x finite: ±π/2
+        __mmask16 y_inf_only = y_inf_mask & ~x_inf_mask;
+        __m512 y_inf_result = _mm512_or_ps(pi_2, _mm512_and_ps(y, sign_mask));
+        inf_result = _mm512_mask_blend_ps(y_inf_only, inf_result, y_inf_result);
+
+        // x infinite, y finite: 0 or ±π
+        __mmask16 x_inf_only = x_inf_mask & ~y_inf_mask;
+        __m512 x_inf_result =
+            _mm512_mask_blend_ps(x_pos_mask,
+                                 _mm512_or_ps(pi, _mm512_and_ps(y, sign_mask)),
+                                 _mm512_or_ps(zero, _mm512_and_ps(y, sign_mask)));
+        inf_result = _mm512_mask_blend_ps(x_inf_only, inf_result, x_inf_result);
+
+        __mmask16 any_inf_mask = y_inf_mask | x_inf_mask;
+
+        __mmask16 swap_mask = _mm512_cmp_ps_mask(
+            _mm512_and_ps(y, abs_mask), _mm512_and_ps(x, abs_mask), _CMP_GT_OS);
+        __m512 numerator = _mm512_mask_blend_ps(swap_mask, y, x);
+        __m512 denominator = _mm512_mask_blend_ps(swap_mask, x, y);
+        __m512 input = _mm512_div_ps(numerator, denominator);
+
+        // Only handle NaN from division (0/0, inf/inf), not from NaN inputs
+        // Replace with numerator to preserve sign (e.g., atan2(-0, 0) = -0)
+        __mmask16 div_nan_mask =
+            _mm512_cmp_ps_mask(input, input, _CMP_UNORD_Q) & ~input_nan_mask;
+        input = _mm512_mask_blend_ps(div_nan_mask, input, numerator);
+        __m512 result = _mm512_arctan_poly_avx512(input);
+
+        input =
+            _mm512_sub_ps(_mm512_or_ps(pi_2, _mm512_and_ps(input, sign_mask)), result);
+        result = _mm512_mask_blend_ps(swap_mask, result, input);
+
+        __m512 x_sign_mask =
+            _mm512_castsi512_ps(_mm512_srai_epi32(_mm512_castps_si512(x), 31));
+
+        result = _mm512_add_ps(
+            _mm512_and_ps(_mm512_xor_ps(pi, _mm512_and_ps(sign_mask, y)), x_sign_mask),
+            result);
+
+        // Select infinity result or normal result
+        result = _mm512_mask_blend_ps(any_inf_mask, result, inf_result);
+
+        result = _mm512_mul_ps(result, vinvNormalizeFactor);
+
+        _mm512_store_ps(out, result);
+        out += 16;
+    }
+
+    number = sixteenth_points * 16;
+    volk_32fc_s32f_atan2_32f_polynomial(
+        out, complexVector + number, normalizeFactor, num_points - number);
+}
+#endif /* LV_HAVE_AVX512F && LV_HAVE_AVX512DQ for aligned */
 
 #if LV_HAVE_AVX2 && LV_HAVE_FMA
 #include <immintrin.h>
@@ -117,10 +221,9 @@ static inline void volk_32fc_s32f_atan2_32f_a_avx2_fma(float* outputVector,
     const __m256 pi_2 = _mm256_set1_ps(0x1.921fb6p0f);
     const __m256 abs_mask = _mm256_castsi256_ps(_mm256_set1_epi32(0x7FFFFFFF));
     const __m256 sign_mask = _mm256_castsi256_ps(_mm256_set1_epi32(0x80000000));
-    const __m256 zero = _mm256_setzero_ps();
 
     unsigned int number = 0;
-    unsigned int eighth_points = num_points / 8;
+    const unsigned int eighth_points = num_points / 8;
     for (; number < eighth_points; number++) {
         __m256 z1 = _mm256_load_ps(in);
         in += 8;
@@ -130,13 +233,57 @@ static inline void volk_32fc_s32f_atan2_32f_a_avx2_fma(float* outputVector,
         __m256 x = _mm256_real(z1, z2);
         __m256 y = _mm256_imag(z1, z2);
 
+        // Detect NaN in original inputs before division
+        __m256 input_nan_mask = _mm256_or_ps(_mm256_cmp_ps(x, x, _CMP_UNORD_Q),
+                                             _mm256_cmp_ps(y, y, _CMP_UNORD_Q));
+
+        // Handle infinity cases per IEEE 754
+        const __m256 zero = _mm256_setzero_ps();
+        const __m256 inf = _mm256_set1_ps(HUGE_VALF);
+        const __m256 pi_4 = _mm256_set1_ps(0x1.921fb6p-1f);      // π/4
+        const __m256 three_pi_4 = _mm256_set1_ps(0x1.2d97c8p1f); // 3π/4
+
+        __m256 y_abs = _mm256_and_ps(y, abs_mask);
+        __m256 x_abs = _mm256_and_ps(x, abs_mask);
+        __m256 y_inf_mask = _mm256_cmp_ps(y_abs, inf, _CMP_EQ_OQ); // |y| == inf
+        __m256 x_inf_mask = _mm256_cmp_ps(x_abs, inf, _CMP_EQ_OQ); // |x| == inf
+        __m256 x_pos_mask = _mm256_cmp_ps(x, zero, _CMP_GT_OS);
+
+        // Build infinity result
+        __m256 inf_result = zero;
+        // Both infinite: ±π/4 or ±3π/4
+        __m256 both_inf = _mm256_and_ps(y_inf_mask, x_inf_mask);
+        __m256 both_inf_result = _mm256_blendv_ps(three_pi_4, pi_4, x_pos_mask);
+        both_inf_result = _mm256_or_ps(both_inf_result, _mm256_and_ps(y, sign_mask));
+        inf_result = _mm256_blendv_ps(inf_result, both_inf_result, both_inf);
+
+        // y infinite, x finite: ±π/2
+        __m256 y_inf_only = _mm256_andnot_ps(x_inf_mask, y_inf_mask);
+        __m256 y_inf_result = _mm256_or_ps(pi_2, _mm256_and_ps(y, sign_mask));
+        inf_result = _mm256_blendv_ps(inf_result, y_inf_result, y_inf_only);
+
+        // x infinite, y finite: 0 or ±π
+        __m256 x_inf_only = _mm256_andnot_ps(y_inf_mask, x_inf_mask);
+        __m256 x_inf_result =
+            _mm256_blendv_ps(_mm256_or_ps(pi, _mm256_and_ps(y, sign_mask)),
+                             _mm256_or_ps(zero, _mm256_and_ps(y, sign_mask)),
+                             x_pos_mask);
+        inf_result = _mm256_blendv_ps(inf_result, x_inf_result, x_inf_only);
+
+        __m256 any_inf_mask = _mm256_or_ps(y_inf_mask, x_inf_mask);
+
         __m256 swap_mask = _mm256_cmp_ps(
             _mm256_and_ps(y, abs_mask), _mm256_and_ps(x, abs_mask), _CMP_GT_OS);
-        __m256 input = _mm256_div_ps(_mm256_blendv_ps(y, x, swap_mask),
-                                     _mm256_blendv_ps(x, y, swap_mask));
-        __m256 nan_mask = _mm256_cmp_ps(input, input, _CMP_UNORD_Q);
-        input = _mm256_blendv_ps(input, zero, nan_mask);
-        __m256 result = _m256_arctan_poly_avx2_fma(input);
+        __m256 numerator = _mm256_blendv_ps(y, x, swap_mask);
+        __m256 denominator = _mm256_blendv_ps(x, y, swap_mask);
+        __m256 input = _mm256_div_ps(numerator, denominator);
+
+        // Only handle NaN from division (0/0, inf/inf), not from NaN inputs
+        // Replace with numerator to preserve sign (e.g., atan2(-0, 0) = -0)
+        __m256 div_nan_mask =
+            _mm256_andnot_ps(input_nan_mask, _mm256_cmp_ps(input, input, _CMP_UNORD_Q));
+        input = _mm256_blendv_ps(input, numerator, div_nan_mask);
+        __m256 result = _mm256_arctan_poly_avx2_fma(input);
 
         input =
             _mm256_sub_ps(_mm256_or_ps(pi_2, _mm256_and_ps(input, sign_mask)), result);
@@ -148,6 +295,10 @@ static inline void volk_32fc_s32f_atan2_32f_a_avx2_fma(float* outputVector,
         result = _mm256_add_ps(
             _mm256_and_ps(_mm256_xor_ps(pi, _mm256_and_ps(sign_mask, y)), x_sign_mask),
             result);
+
+        // Select infinity result or normal result
+        result = _mm256_blendv_ps(result, inf_result, any_inf_mask);
+
         result = _mm256_mul_ps(result, vinvNormalizeFactor);
 
         _mm256_store_ps(out, result);
@@ -177,10 +328,9 @@ static inline void volk_32fc_s32f_atan2_32f_a_avx2(float* outputVector,
     const __m256 pi_2 = _mm256_set1_ps(0x1.921fb6p0f);
     const __m256 abs_mask = _mm256_castsi256_ps(_mm256_set1_epi32(0x7FFFFFFF));
     const __m256 sign_mask = _mm256_castsi256_ps(_mm256_set1_epi32(0x80000000));
-    const __m256 zero = _mm256_setzero_ps();
 
     unsigned int number = 0;
-    unsigned int eighth_points = num_points / 8;
+    const unsigned int eighth_points = num_points / 8;
     for (; number < eighth_points; number++) {
         __m256 z1 = _mm256_load_ps(in);
         in += 8;
@@ -190,13 +340,57 @@ static inline void volk_32fc_s32f_atan2_32f_a_avx2(float* outputVector,
         __m256 x = _mm256_real(z1, z2);
         __m256 y = _mm256_imag(z1, z2);
 
+        // Detect NaN in original inputs before division
+        __m256 input_nan_mask = _mm256_or_ps(_mm256_cmp_ps(x, x, _CMP_UNORD_Q),
+                                             _mm256_cmp_ps(y, y, _CMP_UNORD_Q));
+
+        // Handle infinity cases per IEEE 754
+        const __m256 zero = _mm256_setzero_ps();
+        const __m256 inf = _mm256_set1_ps(HUGE_VALF);
+        const __m256 pi_4 = _mm256_set1_ps(0x1.921fb6p-1f);      // π/4
+        const __m256 three_pi_4 = _mm256_set1_ps(0x1.2d97c8p1f); // 3π/4
+
+        __m256 y_abs = _mm256_and_ps(y, abs_mask);
+        __m256 x_abs = _mm256_and_ps(x, abs_mask);
+        __m256 y_inf_mask = _mm256_cmp_ps(y_abs, inf, _CMP_EQ_OQ); // |y| == inf
+        __m256 x_inf_mask = _mm256_cmp_ps(x_abs, inf, _CMP_EQ_OQ); // |x| == inf
+        __m256 x_pos_mask = _mm256_cmp_ps(x, zero, _CMP_GT_OS);
+
+        // Build infinity result
+        __m256 inf_result = zero;
+        // Both infinite: ±π/4 or ±3π/4
+        __m256 both_inf = _mm256_and_ps(y_inf_mask, x_inf_mask);
+        __m256 both_inf_result = _mm256_blendv_ps(three_pi_4, pi_4, x_pos_mask);
+        both_inf_result = _mm256_or_ps(both_inf_result, _mm256_and_ps(y, sign_mask));
+        inf_result = _mm256_blendv_ps(inf_result, both_inf_result, both_inf);
+
+        // y infinite, x finite: ±π/2
+        __m256 y_inf_only = _mm256_andnot_ps(x_inf_mask, y_inf_mask);
+        __m256 y_inf_result = _mm256_or_ps(pi_2, _mm256_and_ps(y, sign_mask));
+        inf_result = _mm256_blendv_ps(inf_result, y_inf_result, y_inf_only);
+
+        // x infinite, y finite: 0 or ±π
+        __m256 x_inf_only = _mm256_andnot_ps(y_inf_mask, x_inf_mask);
+        __m256 x_inf_result =
+            _mm256_blendv_ps(_mm256_or_ps(pi, _mm256_and_ps(y, sign_mask)),
+                             _mm256_or_ps(zero, _mm256_and_ps(y, sign_mask)),
+                             x_pos_mask);
+        inf_result = _mm256_blendv_ps(inf_result, x_inf_result, x_inf_only);
+
+        __m256 any_inf_mask = _mm256_or_ps(y_inf_mask, x_inf_mask);
+
         __m256 swap_mask = _mm256_cmp_ps(
             _mm256_and_ps(y, abs_mask), _mm256_and_ps(x, abs_mask), _CMP_GT_OS);
-        __m256 input = _mm256_div_ps(_mm256_blendv_ps(y, x, swap_mask),
-                                     _mm256_blendv_ps(x, y, swap_mask));
-        __m256 nan_mask = _mm256_cmp_ps(input, input, _CMP_UNORD_Q);
-        input = _mm256_blendv_ps(input, zero, nan_mask);
-        __m256 result = _m256_arctan_poly_avx(input);
+        __m256 numerator = _mm256_blendv_ps(y, x, swap_mask);
+        __m256 denominator = _mm256_blendv_ps(x, y, swap_mask);
+        __m256 input = _mm256_div_ps(numerator, denominator);
+
+        // Only handle NaN from division (0/0, inf/inf), not from NaN inputs
+        // Replace with numerator to preserve sign (e.g., atan2(-0, 0) = -0)
+        __m256 div_nan_mask =
+            _mm256_andnot_ps(input_nan_mask, _mm256_cmp_ps(input, input, _CMP_UNORD_Q));
+        input = _mm256_blendv_ps(input, numerator, div_nan_mask);
+        __m256 result = _mm256_arctan_poly_avx(input);
 
         input =
             _mm256_sub_ps(_mm256_or_ps(pi_2, _mm256_and_ps(input, sign_mask)), result);
@@ -208,6 +402,10 @@ static inline void volk_32fc_s32f_atan2_32f_a_avx2(float* outputVector,
         result = _mm256_add_ps(
             _mm256_and_ps(_mm256_xor_ps(pi, _mm256_and_ps(sign_mask, y)), x_sign_mask),
             result);
+
+        // Select infinity result or normal result
+        result = _mm256_blendv_ps(result, inf_result, any_inf_mask);
+
         result = _mm256_mul_ps(result, vinvNormalizeFactor);
 
         _mm256_store_ps(out, result);
@@ -219,10 +417,379 @@ static inline void volk_32fc_s32f_atan2_32f_a_avx2(float* outputVector,
         out, (lv_32fc_t*)in, normalizeFactor, num_points - number);
 }
 #endif /* LV_HAVE_AVX2 for aligned */
+
+#ifdef LV_HAVE_NEON
+#include <arm_neon.h>
+#include <volk/volk_neon_intrinsics.h>
+static inline void volk_32fc_s32f_atan2_32f_neon(float* outputVector,
+                                                 const lv_32fc_t* complexVector,
+                                                 const float normalizeFactor,
+                                                 unsigned int num_points)
+{
+    const float* in = (float*)complexVector;
+    float* out = outputVector;
+
+    const float invNormalizeFactor = 1.f / normalizeFactor;
+    const float32x4_t vInvNorm = vdupq_n_f32(invNormalizeFactor);
+    const float32x4_t pi = vdupq_n_f32(0x1.921fb6p1f);
+    const float32x4_t pi_2 = vdupq_n_f32(0x1.921fb6p0f);
+    const float32x4_t pi_4 = vdupq_n_f32(0x1.921fb6p-1f);
+    const float32x4_t three_pi_4 = vdupq_n_f32(0x1.2d97c8p1f);
+    const float32x4_t zero = vdupq_n_f32(0.f);
+    const float32x4_t inf = vdupq_n_f32(__builtin_huge_valf());
+    const uint32x4_t sign_mask = vdupq_n_u32(0x80000000);
+
+    const unsigned int quarter_points = num_points / 4;
+
+    for (unsigned int number = 0; number < quarter_points; number++) {
+        float32x4x2_t z = vld2q_f32(in);
+        in += 8;
+
+        float32x4_t x = z.val[0];
+        float32x4_t y = z.val[1];
+
+        float32x4_t abs_x = vabsq_f32(x);
+        float32x4_t abs_y = vabsq_f32(y);
+
+        /* Detect input NaN */
+        uint32x4_t input_nan =
+            vorrq_u32(vmvnq_u32(vceqq_f32(x, x)), vmvnq_u32(vceqq_f32(y, y)));
+
+        /* Infinity handling */
+        uint32x4_t y_inf = vceqq_f32(abs_y, inf);
+        uint32x4_t x_inf = vceqq_f32(abs_x, inf);
+        uint32x4_t x_pos = vcgtq_f32(x, zero);
+        uint32x4_t both_inf = vandq_u32(y_inf, x_inf);
+        uint32x4_t y_inf_only = vbicq_u32(y_inf, x_inf);
+        uint32x4_t x_inf_only = vbicq_u32(x_inf, y_inf);
+        uint32x4_t any_inf = vorrq_u32(y_inf, x_inf);
+
+        float32x4_t inf_result = zero;
+        /* Both infinite: ±π/4 or ±3π/4 */
+        float32x4_t both_inf_r = vbslq_f32(x_pos, pi_4, three_pi_4);
+        both_inf_r = vreinterpretq_f32_u32(
+            vorrq_u32(vreinterpretq_u32_f32(both_inf_r),
+                      vandq_u32(vreinterpretq_u32_f32(y), sign_mask)));
+        inf_result = vbslq_f32(both_inf, both_inf_r, inf_result);
+        /* y infinite, x finite: ±π/2 */
+        float32x4_t y_inf_r = vreinterpretq_f32_u32(vorrq_u32(
+            vreinterpretq_u32_f32(pi_2), vandq_u32(vreinterpretq_u32_f32(y), sign_mask)));
+        inf_result = vbslq_f32(y_inf_only, y_inf_r, inf_result);
+        /* x infinite, y finite: 0 or ±π */
+        float32x4_t x_inf_r = vbslq_f32(
+            x_pos,
+            vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(y), sign_mask)),
+            vreinterpretq_f32_u32(
+                vorrq_u32(vreinterpretq_u32_f32(pi),
+                          vandq_u32(vreinterpretq_u32_f32(y), sign_mask))));
+        inf_result = vbslq_f32(x_inf_only, x_inf_r, inf_result);
+
+        /* Normal computation */
+        uint32x4_t swap_mask = vcgtq_f32(abs_y, abs_x);
+        float32x4_t num = vbslq_f32(swap_mask, x, y);
+        float32x4_t den = vbslq_f32(swap_mask, y, x);
+        float32x4_t input = vmulq_f32(num, _vinvq_f32(den));
+
+        /* Handle division NaN (0/0), but not input NaN */
+        uint32x4_t div_nan = vbicq_u32(vmvnq_u32(vceqq_f32(input, input)), input_nan);
+        input = vbslq_f32(div_nan, num, input);
+
+        float32x4_t result = _varctan_poly_f32(input);
+        uint32x4_t input_sign = vandq_u32(vreinterpretq_u32_f32(input), sign_mask);
+        float32x4_t term =
+            vreinterpretq_f32_u32(vorrq_u32(vreinterpretq_u32_f32(pi_2), input_sign));
+        term = vsubq_f32(term, result);
+        result = vbslq_f32(swap_mask, term, result);
+
+        uint32x4_t x_neg = vcltq_f32(x, zero);
+        uint32x4_t y_sign = vandq_u32(vreinterpretq_u32_f32(y), sign_mask);
+        float32x4_t pi_adj =
+            vreinterpretq_f32_u32(vorrq_u32(vreinterpretq_u32_f32(pi), y_sign));
+        result = vbslq_f32(x_neg, vaddq_f32(result, pi_adj), result);
+
+        /* Select infinity result or normal result */
+        result = vbslq_f32(any_inf, inf_result, result);
+        result = vmulq_f32(result, vInvNorm);
+
+        vst1q_f32(out, result);
+        out += 4;
+    }
+
+    unsigned int number = quarter_points * 4;
+    volk_32fc_s32f_atan2_32f_polynomial(
+        out, complexVector + number, normalizeFactor, num_points - number);
+}
+#endif /* LV_HAVE_NEON */
+
+#ifdef LV_HAVE_NEONV8
+#include <arm_neon.h>
+#include <volk/volk_neon_intrinsics.h>
+/* ARMv8 NEON with FMA, proper infinity/NaN handling, and 2x unrolling */
+static inline void volk_32fc_s32f_atan2_32f_neonv8(float* outputVector,
+                                                   const lv_32fc_t* complexVector,
+                                                   const float normalizeFactor,
+                                                   unsigned int num_points)
+{
+    const float* in = (float*)complexVector;
+    float* out = outputVector;
+
+    const float invNormalizeFactor = 1.f / normalizeFactor;
+    const float32x4_t vInvNorm = vdupq_n_f32(invNormalizeFactor);
+    const float32x4_t pi = vdupq_n_f32(0x1.921fb6p1f);
+    const float32x4_t pi_2 = vdupq_n_f32(0x1.921fb6p0f);
+    const float32x4_t pi_4 = vdupq_n_f32(0x1.921fb6p-1f);
+    const float32x4_t three_pi_4 = vdupq_n_f32(0x1.2d97c8p1f);
+    const float32x4_t zero = vdupq_n_f32(0.f);
+    const float32x4_t inf = vdupq_n_f32(__builtin_huge_valf());
+    const uint32x4_t sign_mask = vdupq_n_u32(0x80000000);
+
+    const unsigned int eighth_points = num_points / 8;
+
+    for (unsigned int number = 0; number < eighth_points; number++) {
+        /* Load 8 complex numbers and deinterleave */
+        float32x4x2_t z0 = vld2q_f32(in);
+        float32x4x2_t z1 = vld2q_f32(in + 8);
+        in += 16;
+
+        float32x4_t x0 = z0.val[0], y0 = z0.val[1];
+        float32x4_t x1 = z1.val[0], y1 = z1.val[1];
+
+        /* --- Process first 4 --- */
+        float32x4_t abs_x0 = vabsq_f32(x0);
+        float32x4_t abs_y0 = vabsq_f32(y0);
+
+        /* Detect input NaN */
+        uint32x4_t input_nan0 =
+            vorrq_u32(vmvnq_u32(vceqq_f32(x0, x0)), vmvnq_u32(vceqq_f32(y0, y0)));
+
+        /* Infinity handling */
+        uint32x4_t y_inf0 = vceqq_f32(abs_y0, inf);
+        uint32x4_t x_inf0 = vceqq_f32(abs_x0, inf);
+        uint32x4_t x_pos0 = vcgtq_f32(x0, zero);
+        uint32x4_t both_inf0 = vandq_u32(y_inf0, x_inf0);
+        uint32x4_t y_inf_only0 = vbicq_u32(y_inf0, x_inf0);
+        uint32x4_t x_inf_only0 = vbicq_u32(x_inf0, y_inf0);
+        uint32x4_t any_inf0 = vorrq_u32(y_inf0, x_inf0);
+
+        float32x4_t inf_result0 = zero;
+        float32x4_t both_inf_r0 = vbslq_f32(x_pos0, pi_4, three_pi_4);
+        both_inf_r0 = vreinterpretq_f32_u32(
+            vorrq_u32(vreinterpretq_u32_f32(both_inf_r0),
+                      vandq_u32(vreinterpretq_u32_f32(y0), sign_mask)));
+        inf_result0 = vbslq_f32(both_inf0, both_inf_r0, inf_result0);
+        float32x4_t y_inf_r0 = vreinterpretq_f32_u32(
+            vorrq_u32(vreinterpretq_u32_f32(pi_2),
+                      vandq_u32(vreinterpretq_u32_f32(y0), sign_mask)));
+        inf_result0 = vbslq_f32(y_inf_only0, y_inf_r0, inf_result0);
+        float32x4_t x_inf_r0 = vbslq_f32(
+            x_pos0,
+            vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(y0), sign_mask)),
+            vreinterpretq_f32_u32(
+                vorrq_u32(vreinterpretq_u32_f32(pi),
+                          vandq_u32(vreinterpretq_u32_f32(y0), sign_mask))));
+        inf_result0 = vbslq_f32(x_inf_only0, x_inf_r0, inf_result0);
+
+        /* Normal computation */
+        uint32x4_t swap_mask0 = vcgtq_f32(abs_y0, abs_x0);
+        float32x4_t num0 = vbslq_f32(swap_mask0, x0, y0);
+        float32x4_t den0 = vbslq_f32(swap_mask0, y0, x0);
+        float32x4_t input0 = vmulq_f32(num0, _vinvq_f32(den0));
+
+        uint32x4_t div_nan0 = vbicq_u32(vmvnq_u32(vceqq_f32(input0, input0)), input_nan0);
+        input0 = vbslq_f32(div_nan0, num0, input0);
+
+        float32x4_t result0 = _varctan_poly_neonv8(input0);
+        uint32x4_t input_sign0 = vandq_u32(vreinterpretq_u32_f32(input0), sign_mask);
+        float32x4_t term0 =
+            vreinterpretq_f32_u32(vorrq_u32(vreinterpretq_u32_f32(pi_2), input_sign0));
+        term0 = vsubq_f32(term0, result0);
+        result0 = vbslq_f32(swap_mask0, term0, result0);
+
+        uint32x4_t x_neg0 = vcltq_f32(x0, zero);
+        uint32x4_t y_sign0 = vandq_u32(vreinterpretq_u32_f32(y0), sign_mask);
+        float32x4_t pi_adj0 =
+            vreinterpretq_f32_u32(vorrq_u32(vreinterpretq_u32_f32(pi), y_sign0));
+        result0 = vbslq_f32(x_neg0, vaddq_f32(result0, pi_adj0), result0);
+
+        result0 = vbslq_f32(any_inf0, inf_result0, result0);
+        result0 = vmulq_f32(result0, vInvNorm);
+
+        /* --- Process second 4 --- */
+        float32x4_t abs_x1 = vabsq_f32(x1);
+        float32x4_t abs_y1 = vabsq_f32(y1);
+
+        uint32x4_t input_nan1 =
+            vorrq_u32(vmvnq_u32(vceqq_f32(x1, x1)), vmvnq_u32(vceqq_f32(y1, y1)));
+
+        uint32x4_t y_inf1 = vceqq_f32(abs_y1, inf);
+        uint32x4_t x_inf1 = vceqq_f32(abs_x1, inf);
+        uint32x4_t x_pos1 = vcgtq_f32(x1, zero);
+        uint32x4_t both_inf1 = vandq_u32(y_inf1, x_inf1);
+        uint32x4_t y_inf_only1 = vbicq_u32(y_inf1, x_inf1);
+        uint32x4_t x_inf_only1 = vbicq_u32(x_inf1, y_inf1);
+        uint32x4_t any_inf1 = vorrq_u32(y_inf1, x_inf1);
+
+        float32x4_t inf_result1 = zero;
+        float32x4_t both_inf_r1 = vbslq_f32(x_pos1, pi_4, three_pi_4);
+        both_inf_r1 = vreinterpretq_f32_u32(
+            vorrq_u32(vreinterpretq_u32_f32(both_inf_r1),
+                      vandq_u32(vreinterpretq_u32_f32(y1), sign_mask)));
+        inf_result1 = vbslq_f32(both_inf1, both_inf_r1, inf_result1);
+        float32x4_t y_inf_r1 = vreinterpretq_f32_u32(
+            vorrq_u32(vreinterpretq_u32_f32(pi_2),
+                      vandq_u32(vreinterpretq_u32_f32(y1), sign_mask)));
+        inf_result1 = vbslq_f32(y_inf_only1, y_inf_r1, inf_result1);
+        float32x4_t x_inf_r1 = vbslq_f32(
+            x_pos1,
+            vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(y1), sign_mask)),
+            vreinterpretq_f32_u32(
+                vorrq_u32(vreinterpretq_u32_f32(pi),
+                          vandq_u32(vreinterpretq_u32_f32(y1), sign_mask))));
+        inf_result1 = vbslq_f32(x_inf_only1, x_inf_r1, inf_result1);
+
+        uint32x4_t swap_mask1 = vcgtq_f32(abs_y1, abs_x1);
+        float32x4_t num1 = vbslq_f32(swap_mask1, x1, y1);
+        float32x4_t den1 = vbslq_f32(swap_mask1, y1, x1);
+        float32x4_t input1 = vmulq_f32(num1, _vinvq_f32(den1));
+
+        uint32x4_t div_nan1 = vbicq_u32(vmvnq_u32(vceqq_f32(input1, input1)), input_nan1);
+        input1 = vbslq_f32(div_nan1, num1, input1);
+
+        float32x4_t result1 = _varctan_poly_neonv8(input1);
+        uint32x4_t input_sign1 = vandq_u32(vreinterpretq_u32_f32(input1), sign_mask);
+        float32x4_t term1 =
+            vreinterpretq_f32_u32(vorrq_u32(vreinterpretq_u32_f32(pi_2), input_sign1));
+        term1 = vsubq_f32(term1, result1);
+        result1 = vbslq_f32(swap_mask1, term1, result1);
+
+        uint32x4_t x_neg1 = vcltq_f32(x1, zero);
+        uint32x4_t y_sign1 = vandq_u32(vreinterpretq_u32_f32(y1), sign_mask);
+        float32x4_t pi_adj1 =
+            vreinterpretq_f32_u32(vorrq_u32(vreinterpretq_u32_f32(pi), y_sign1));
+        result1 = vbslq_f32(x_neg1, vaddq_f32(result1, pi_adj1), result1);
+
+        result1 = vbslq_f32(any_inf1, inf_result1, result1);
+        result1 = vmulq_f32(result1, vInvNorm);
+
+        vst1q_f32(out, result0);
+        vst1q_f32(out + 4, result1);
+        out += 8;
+    }
+
+    unsigned int number = eighth_points * 8;
+    volk_32fc_s32f_atan2_32f_polynomial(
+        out, complexVector + number, normalizeFactor, num_points - number);
+}
+#endif /* LV_HAVE_NEONV8 */
+
 #endif /* INCLUDED_volk_32fc_s32f_atan2_32f_a_H */
 
 #ifndef INCLUDED_volk_32fc_s32f_atan2_32f_u_H
 #define INCLUDED_volk_32fc_s32f_atan2_32f_u_H
+
+#if LV_HAVE_AVX512F && LV_HAVE_AVX512DQ
+#include <immintrin.h>
+#include <volk/volk_avx512_intrinsics.h>
+static inline void volk_32fc_s32f_atan2_32f_u_avx512dq(float* outputVector,
+                                                       const lv_32fc_t* complexVector,
+                                                       const float normalizeFactor,
+                                                       unsigned int num_points)
+{
+    const float* in = (float*)complexVector;
+    float* out = (float*)outputVector;
+
+    const float invNormalizeFactor = 1.f / normalizeFactor;
+    const __m512 vinvNormalizeFactor = _mm512_set1_ps(invNormalizeFactor);
+    const __m512 pi = _mm512_set1_ps(0x1.921fb6p1f);
+    const __m512 pi_2 = _mm512_set1_ps(0x1.921fb6p0f);
+    const __m512 abs_mask = _mm512_castsi512_ps(_mm512_set1_epi32(0x7FFFFFFF));
+    const __m512 sign_mask = _mm512_castsi512_ps(_mm512_set1_epi32(0x80000000));
+
+    const unsigned int sixteenth_points = num_points / 16;
+
+    for (unsigned int number = 0; number < sixteenth_points; number++) {
+        __m512 z1 = _mm512_loadu_ps(in);
+        in += 16;
+        __m512 z2 = _mm512_loadu_ps(in);
+        in += 16;
+
+        __m512 x = _mm512_real(z1, z2);
+        __m512 y = _mm512_imag(z1, z2);
+
+        // Detect NaN in original inputs before division
+        __mmask16 input_nan_mask = _mm512_cmp_ps_mask(x, x, _CMP_UNORD_Q) |
+                                   _mm512_cmp_ps_mask(y, y, _CMP_UNORD_Q);
+
+        // Handle infinity cases per IEEE 754
+        const __m512 zero = _mm512_setzero_ps();
+        const __m512 pi_4 = _mm512_set1_ps(0x1.921fb6p-1f);      // π/4
+        const __m512 three_pi_4 = _mm512_set1_ps(0x1.2d97c8p1f); // 3π/4
+
+        __mmask16 y_inf_mask = _mm512_fpclass_ps_mask(y, 0x18); // ±inf
+        __mmask16 x_inf_mask = _mm512_fpclass_ps_mask(x, 0x18); // ±inf
+        __mmask16 x_pos_mask = _mm512_cmp_ps_mask(x, zero, _CMP_GT_OS);
+
+        // Build infinity result
+        __m512 inf_result = zero;
+        // Both infinite: ±π/4 or ±3π/4
+        __mmask16 both_inf = y_inf_mask & x_inf_mask;
+        __m512 both_inf_result = _mm512_mask_blend_ps(x_pos_mask, three_pi_4, pi_4);
+        both_inf_result = _mm512_or_ps(both_inf_result, _mm512_and_ps(y, sign_mask));
+        inf_result = _mm512_mask_blend_ps(both_inf, inf_result, both_inf_result);
+
+        // y infinite, x finite: ±π/2
+        __mmask16 y_inf_only = y_inf_mask & ~x_inf_mask;
+        __m512 y_inf_result = _mm512_or_ps(pi_2, _mm512_and_ps(y, sign_mask));
+        inf_result = _mm512_mask_blend_ps(y_inf_only, inf_result, y_inf_result);
+
+        // x infinite, y finite: 0 or ±π
+        __mmask16 x_inf_only = x_inf_mask & ~y_inf_mask;
+        __m512 x_inf_result =
+            _mm512_mask_blend_ps(x_pos_mask,
+                                 _mm512_or_ps(pi, _mm512_and_ps(y, sign_mask)),
+                                 _mm512_or_ps(zero, _mm512_and_ps(y, sign_mask)));
+        inf_result = _mm512_mask_blend_ps(x_inf_only, inf_result, x_inf_result);
+
+        __mmask16 any_inf_mask = y_inf_mask | x_inf_mask;
+
+        __mmask16 swap_mask = _mm512_cmp_ps_mask(
+            _mm512_and_ps(y, abs_mask), _mm512_and_ps(x, abs_mask), _CMP_GT_OS);
+        __m512 numerator = _mm512_mask_blend_ps(swap_mask, y, x);
+        __m512 denominator = _mm512_mask_blend_ps(swap_mask, x, y);
+        __m512 input = _mm512_div_ps(numerator, denominator);
+
+        // Only handle NaN from division (0/0, inf/inf), not from NaN inputs
+        // Replace with numerator to preserve sign (e.g., atan2(-0, 0) = -0)
+        __mmask16 div_nan_mask =
+            _mm512_cmp_ps_mask(input, input, _CMP_UNORD_Q) & ~input_nan_mask;
+        input = _mm512_mask_blend_ps(div_nan_mask, input, numerator);
+        __m512 result = _mm512_arctan_poly_avx512(input);
+
+        input =
+            _mm512_sub_ps(_mm512_or_ps(pi_2, _mm512_and_ps(input, sign_mask)), result);
+        result = _mm512_mask_blend_ps(swap_mask, result, input);
+
+        __m512 x_sign_mask =
+            _mm512_castsi512_ps(_mm512_srai_epi32(_mm512_castps_si512(x), 31));
+
+        result = _mm512_add_ps(
+            _mm512_and_ps(_mm512_xor_ps(pi, _mm512_and_ps(sign_mask, y)), x_sign_mask),
+            result);
+
+        // Select infinity result or normal result
+        result = _mm512_mask_blend_ps(any_inf_mask, result, inf_result);
+
+        result = _mm512_mul_ps(result, vinvNormalizeFactor);
+
+        _mm512_storeu_ps(out, result);
+        out += 16;
+    }
+
+    unsigned int number = sixteenth_points * 16;
+    volk_32fc_s32f_atan2_32f_polynomial(
+        out, complexVector + number, normalizeFactor, num_points - number);
+}
+#endif /* LV_HAVE_AVX512F && LV_HAVE_AVX512DQ for unaligned */
 
 #if LV_HAVE_AVX2 && LV_HAVE_FMA
 #include <immintrin.h>
@@ -241,10 +808,9 @@ static inline void volk_32fc_s32f_atan2_32f_u_avx2_fma(float* outputVector,
     const __m256 pi_2 = _mm256_set1_ps(0x1.921fb6p0f);
     const __m256 abs_mask = _mm256_castsi256_ps(_mm256_set1_epi32(0x7FFFFFFF));
     const __m256 sign_mask = _mm256_castsi256_ps(_mm256_set1_epi32(0x80000000));
-    const __m256 zero = _mm256_setzero_ps();
 
     unsigned int number = 0;
-    unsigned int eighth_points = num_points / 8;
+    const unsigned int eighth_points = num_points / 8;
     for (; number < eighth_points; number++) {
         __m256 z1 = _mm256_loadu_ps(in);
         in += 8;
@@ -254,13 +820,57 @@ static inline void volk_32fc_s32f_atan2_32f_u_avx2_fma(float* outputVector,
         __m256 x = _mm256_real(z1, z2);
         __m256 y = _mm256_imag(z1, z2);
 
+        // Detect NaN in original inputs before division
+        __m256 input_nan_mask = _mm256_or_ps(_mm256_cmp_ps(x, x, _CMP_UNORD_Q),
+                                             _mm256_cmp_ps(y, y, _CMP_UNORD_Q));
+
+        // Handle infinity cases per IEEE 754
+        const __m256 zero = _mm256_setzero_ps();
+        const __m256 inf = _mm256_set1_ps(HUGE_VALF);
+        const __m256 pi_4 = _mm256_set1_ps(0x1.921fb6p-1f);      // π/4
+        const __m256 three_pi_4 = _mm256_set1_ps(0x1.2d97c8p1f); // 3π/4
+
+        __m256 y_abs = _mm256_and_ps(y, abs_mask);
+        __m256 x_abs = _mm256_and_ps(x, abs_mask);
+        __m256 y_inf_mask = _mm256_cmp_ps(y_abs, inf, _CMP_EQ_OQ); // |y| == inf
+        __m256 x_inf_mask = _mm256_cmp_ps(x_abs, inf, _CMP_EQ_OQ); // |x| == inf
+        __m256 x_pos_mask = _mm256_cmp_ps(x, zero, _CMP_GT_OS);
+
+        // Build infinity result
+        __m256 inf_result = zero;
+        // Both infinite: ±π/4 or ±3π/4
+        __m256 both_inf = _mm256_and_ps(y_inf_mask, x_inf_mask);
+        __m256 both_inf_result = _mm256_blendv_ps(three_pi_4, pi_4, x_pos_mask);
+        both_inf_result = _mm256_or_ps(both_inf_result, _mm256_and_ps(y, sign_mask));
+        inf_result = _mm256_blendv_ps(inf_result, both_inf_result, both_inf);
+
+        // y infinite, x finite: ±π/2
+        __m256 y_inf_only = _mm256_andnot_ps(x_inf_mask, y_inf_mask);
+        __m256 y_inf_result = _mm256_or_ps(pi_2, _mm256_and_ps(y, sign_mask));
+        inf_result = _mm256_blendv_ps(inf_result, y_inf_result, y_inf_only);
+
+        // x infinite, y finite: 0 or ±π
+        __m256 x_inf_only = _mm256_andnot_ps(y_inf_mask, x_inf_mask);
+        __m256 x_inf_result =
+            _mm256_blendv_ps(_mm256_or_ps(pi, _mm256_and_ps(y, sign_mask)),
+                             _mm256_or_ps(zero, _mm256_and_ps(y, sign_mask)),
+                             x_pos_mask);
+        inf_result = _mm256_blendv_ps(inf_result, x_inf_result, x_inf_only);
+
+        __m256 any_inf_mask = _mm256_or_ps(y_inf_mask, x_inf_mask);
+
         __m256 swap_mask = _mm256_cmp_ps(
             _mm256_and_ps(y, abs_mask), _mm256_and_ps(x, abs_mask), _CMP_GT_OS);
-        __m256 input = _mm256_div_ps(_mm256_blendv_ps(y, x, swap_mask),
-                                     _mm256_blendv_ps(x, y, swap_mask));
-        __m256 nan_mask = _mm256_cmp_ps(input, input, _CMP_UNORD_Q);
-        input = _mm256_blendv_ps(input, zero, nan_mask);
-        __m256 result = _m256_arctan_poly_avx2_fma(input);
+        __m256 numerator = _mm256_blendv_ps(y, x, swap_mask);
+        __m256 denominator = _mm256_blendv_ps(x, y, swap_mask);
+        __m256 input = _mm256_div_ps(numerator, denominator);
+
+        // Only handle NaN from division (0/0, inf/inf), not from NaN inputs
+        // Replace with numerator to preserve sign (e.g., atan2(-0, 0) = -0)
+        __m256 div_nan_mask =
+            _mm256_andnot_ps(input_nan_mask, _mm256_cmp_ps(input, input, _CMP_UNORD_Q));
+        input = _mm256_blendv_ps(input, numerator, div_nan_mask);
+        __m256 result = _mm256_arctan_poly_avx2_fma(input);
 
         input =
             _mm256_sub_ps(_mm256_or_ps(pi_2, _mm256_and_ps(input, sign_mask)), result);
@@ -272,6 +882,10 @@ static inline void volk_32fc_s32f_atan2_32f_u_avx2_fma(float* outputVector,
         result = _mm256_add_ps(
             _mm256_and_ps(_mm256_xor_ps(pi, _mm256_and_ps(sign_mask, y)), x_sign_mask),
             result);
+
+        // Select infinity result or normal result
+        result = _mm256_blendv_ps(result, inf_result, any_inf_mask);
+
         result = _mm256_mul_ps(result, vinvNormalizeFactor);
 
         _mm256_storeu_ps(out, result);
@@ -301,10 +915,9 @@ static inline void volk_32fc_s32f_atan2_32f_u_avx2(float* outputVector,
     const __m256 pi_2 = _mm256_set1_ps(0x1.921fb6p0f);
     const __m256 abs_mask = _mm256_castsi256_ps(_mm256_set1_epi32(0x7FFFFFFF));
     const __m256 sign_mask = _mm256_castsi256_ps(_mm256_set1_epi32(0x80000000));
-    const __m256 zero = _mm256_setzero_ps();
 
     unsigned int number = 0;
-    unsigned int eighth_points = num_points / 8;
+    const unsigned int eighth_points = num_points / 8;
     for (; number < eighth_points; number++) {
         __m256 z1 = _mm256_loadu_ps(in);
         in += 8;
@@ -314,13 +927,57 @@ static inline void volk_32fc_s32f_atan2_32f_u_avx2(float* outputVector,
         __m256 x = _mm256_real(z1, z2);
         __m256 y = _mm256_imag(z1, z2);
 
+        // Detect NaN in original inputs before division
+        __m256 input_nan_mask = _mm256_or_ps(_mm256_cmp_ps(x, x, _CMP_UNORD_Q),
+                                             _mm256_cmp_ps(y, y, _CMP_UNORD_Q));
+
+        // Handle infinity cases per IEEE 754
+        const __m256 zero = _mm256_setzero_ps();
+        const __m256 inf = _mm256_set1_ps(HUGE_VALF);
+        const __m256 pi_4 = _mm256_set1_ps(0x1.921fb6p-1f);      // π/4
+        const __m256 three_pi_4 = _mm256_set1_ps(0x1.2d97c8p1f); // 3π/4
+
+        __m256 y_abs = _mm256_and_ps(y, abs_mask);
+        __m256 x_abs = _mm256_and_ps(x, abs_mask);
+        __m256 y_inf_mask = _mm256_cmp_ps(y_abs, inf, _CMP_EQ_OQ); // |y| == inf
+        __m256 x_inf_mask = _mm256_cmp_ps(x_abs, inf, _CMP_EQ_OQ); // |x| == inf
+        __m256 x_pos_mask = _mm256_cmp_ps(x, zero, _CMP_GT_OS);
+
+        // Build infinity result
+        __m256 inf_result = zero;
+        // Both infinite: ±π/4 or ±3π/4
+        __m256 both_inf = _mm256_and_ps(y_inf_mask, x_inf_mask);
+        __m256 both_inf_result = _mm256_blendv_ps(three_pi_4, pi_4, x_pos_mask);
+        both_inf_result = _mm256_or_ps(both_inf_result, _mm256_and_ps(y, sign_mask));
+        inf_result = _mm256_blendv_ps(inf_result, both_inf_result, both_inf);
+
+        // y infinite, x finite: ±π/2
+        __m256 y_inf_only = _mm256_andnot_ps(x_inf_mask, y_inf_mask);
+        __m256 y_inf_result = _mm256_or_ps(pi_2, _mm256_and_ps(y, sign_mask));
+        inf_result = _mm256_blendv_ps(inf_result, y_inf_result, y_inf_only);
+
+        // x infinite, y finite: 0 or ±π
+        __m256 x_inf_only = _mm256_andnot_ps(y_inf_mask, x_inf_mask);
+        __m256 x_inf_result =
+            _mm256_blendv_ps(_mm256_or_ps(pi, _mm256_and_ps(y, sign_mask)),
+                             _mm256_or_ps(zero, _mm256_and_ps(y, sign_mask)),
+                             x_pos_mask);
+        inf_result = _mm256_blendv_ps(inf_result, x_inf_result, x_inf_only);
+
+        __m256 any_inf_mask = _mm256_or_ps(y_inf_mask, x_inf_mask);
+
         __m256 swap_mask = _mm256_cmp_ps(
             _mm256_and_ps(y, abs_mask), _mm256_and_ps(x, abs_mask), _CMP_GT_OS);
-        __m256 input = _mm256_div_ps(_mm256_blendv_ps(y, x, swap_mask),
-                                     _mm256_blendv_ps(x, y, swap_mask));
-        __m256 nan_mask = _mm256_cmp_ps(input, input, _CMP_UNORD_Q);
-        input = _mm256_blendv_ps(input, zero, nan_mask);
-        __m256 result = _m256_arctan_poly_avx(input);
+        __m256 numerator = _mm256_blendv_ps(y, x, swap_mask);
+        __m256 denominator = _mm256_blendv_ps(x, y, swap_mask);
+        __m256 input = _mm256_div_ps(numerator, denominator);
+
+        // Only handle NaN from division (0/0, inf/inf), not from NaN inputs
+        // Replace with numerator to preserve sign (e.g., atan2(-0, 0) = -0)
+        __m256 div_nan_mask =
+            _mm256_andnot_ps(input_nan_mask, _mm256_cmp_ps(input, input, _CMP_UNORD_Q));
+        input = _mm256_blendv_ps(input, numerator, div_nan_mask);
+        __m256 result = _mm256_arctan_poly_avx(input);
 
         input =
             _mm256_sub_ps(_mm256_or_ps(pi_2, _mm256_and_ps(input, sign_mask)), result);
@@ -332,6 +989,10 @@ static inline void volk_32fc_s32f_atan2_32f_u_avx2(float* outputVector,
         result = _mm256_add_ps(
             _mm256_and_ps(_mm256_xor_ps(pi, _mm256_and_ps(sign_mask, y)), x_sign_mask),
             result);
+
+        // Select infinity result or normal result
+        result = _mm256_blendv_ps(result, inf_result, any_inf_mask);
+
         result = _mm256_mul_ps(result, vinvNormalizeFactor);
 
         _mm256_storeu_ps(out, result);
@@ -366,18 +1027,64 @@ static inline void volk_32fc_s32f_atan2_32f_rvv(float* outputVector,
     const vfloat32m2_t c11 = __riscv_vfmv_v_f_f32m2(-0x1.2f3004p-5f, vlmax);
     const vfloat32m2_t c13 = __riscv_vfmv_v_f_f32m2(+0x1.01a37cp-7f, vlmax);
 
+    const vfloat32m2_t zero = __riscv_vfmv_v_f_f32m2(0.0f, vlmax);
+    const vfloat32m2_t inf = __riscv_vfmv_v_f_f32m2(HUGE_VALF, vlmax);
+    const vfloat32m2_t pi_4 = __riscv_vfmv_v_f_f32m2(0x1.921fb6p-1f, vlmax);      // π/4
+    const vfloat32m2_t three_pi_4 = __riscv_vfmv_v_f_f32m2(0x1.2d97c8p1f, vlmax); // 3π/4
+
     size_t n = num_points;
     for (size_t vl; n > 0; n -= vl, inputVector += vl, outputVector += vl) {
         vl = __riscv_vsetvl_e32m2(n);
         vuint64m4_t v = __riscv_vle64_v_u64m4((const uint64_t*)inputVector, vl);
         vfloat32m2_t vr = __riscv_vreinterpret_f32m2(__riscv_vnsrl(v, 0, vl));
         vfloat32m2_t vi = __riscv_vreinterpret_f32m2(__riscv_vnsrl(v, 32, vl));
-        vbool16_t mswap = __riscv_vmfgt(__riscv_vfabs(vi, vl), __riscv_vfabs(vr, vl), vl);
-        vfloat32m2_t x = __riscv_vfdiv(
-            __riscv_vmerge(vi, vr, mswap, vl), __riscv_vmerge(vr, vi, mswap, vl), vl);
-        vbool16_t mnan = __riscv_vmsgtu(__riscv_vfclass(x, vl), 0xFF, vl);
-        x = __riscv_vreinterpret_f32m2(
-            __riscv_vmerge(__riscv_vreinterpret_u32m2(x), 0, mnan, vl));
+
+        // Detect NaN in original inputs before division
+        vbool16_t input_nan_mask =
+            __riscv_vmor(__riscv_vmfne(vr, vr, vl), __riscv_vmfne(vi, vi, vl), vl);
+
+        // Handle infinity cases per IEEE 754
+        vfloat32m2_t vr_abs = __riscv_vfabs(vr, vl);
+        vfloat32m2_t vi_abs = __riscv_vfabs(vi, vl);
+        vbool16_t vr_inf_mask = __riscv_vmfeq(vr_abs, inf, vl); // |vr| == inf
+        vbool16_t vi_inf_mask = __riscv_vmfeq(vi_abs, inf, vl); // |vi| == inf
+        vbool16_t vr_pos_mask = __riscv_vmfgt(vr, zero, vl);
+
+        // Build infinity result
+        vfloat32m2_t inf_result = zero;
+        // Both infinite: ±π/4 or ±3π/4
+        vbool16_t both_inf = __riscv_vmand(vi_inf_mask, vr_inf_mask, vl);
+        vfloat32m2_t both_inf_result = __riscv_vmerge(three_pi_4, pi_4, vr_pos_mask, vl);
+        both_inf_result = __riscv_vfsgnj(both_inf_result, vi, vl); // Copy sign from vi
+        inf_result = __riscv_vmerge(inf_result, both_inf_result, both_inf, vl);
+
+        // vi infinite, vr finite: ±π/2
+        vbool16_t vi_inf_only = __riscv_vmandn(vi_inf_mask, vr_inf_mask, vl);
+        vfloat32m2_t vi_inf_result = __riscv_vfsgnj(cpio2, vi, vl); // π/2 with sign of vi
+        inf_result = __riscv_vmerge(inf_result, vi_inf_result, vi_inf_only, vl);
+
+        // vr infinite, vi finite: 0 or ±π
+        vbool16_t vr_inf_only = __riscv_vmandn(vr_inf_mask, vi_inf_mask, vl);
+        vfloat32m2_t vr_inf_result =
+            __riscv_vmerge(__riscv_vfsgnj(cpi, vi, vl),  // π with sign of vi
+                           __riscv_vfsgnj(zero, vi, vl), // 0 with sign of vi
+                           vr_pos_mask,
+                           vl);
+        inf_result = __riscv_vmerge(inf_result, vr_inf_result, vr_inf_only, vl);
+
+        vbool16_t any_inf_mask = __riscv_vmor(vi_inf_mask, vr_inf_mask, vl);
+
+        vbool16_t mswap = __riscv_vmfgt(vi_abs, vr_abs, vl);
+        vfloat32m2_t numerator = __riscv_vmerge(vi, vr, mswap, vl);
+        vfloat32m2_t denominator = __riscv_vmerge(vr, vi, mswap, vl);
+        vfloat32m2_t x = __riscv_vfdiv(numerator, denominator, vl);
+
+        // Only handle NaN from division (0/0, inf/inf), not from NaN inputs
+        // Replace with numerator to preserve sign (e.g., atan2(-0, 0) = -0)
+        vbool16_t x_nan_mask = __riscv_vmfne(x, x, vl);
+        // div_nan_mask = x_nan_mask & ~input_nan_mask (vmandn computes vs2 & ~vs1)
+        vbool16_t div_nan_mask = __riscv_vmandn(x_nan_mask, input_nan_mask, vl);
+        x = __riscv_vmerge(x, numerator, div_nan_mask, vl);
 
         vfloat32m2_t xx = __riscv_vfmul(x, x, vl);
         vfloat32m2_t p = c13;
@@ -393,6 +1100,9 @@ static inline void volk_32fc_s32f_atan2_32f_rvv(float* outputVector,
         p = __riscv_vmerge(p, x, mswap, vl);
         p = __riscv_vfadd_mu(
             RISCV_VMFLTZ(32m2, vr, vl), p, p, __riscv_vfsgnjx(cpi, vi, vl), vl);
+
+        // Select infinity result or normal result
+        p = __riscv_vmerge(p, inf_result, any_inf_mask, vl);
 
         __riscv_vse32(outputVector, __riscv_vfmul(p, norm, vl), vl);
     }
@@ -421,17 +1131,63 @@ static inline void volk_32fc_s32f_atan2_32f_rvvseg(float* outputVector,
     const vfloat32m2_t c11 = __riscv_vfmv_v_f_f32m2(-0x1.2f3004p-5f, vlmax);
     const vfloat32m2_t c13 = __riscv_vfmv_v_f_f32m2(+0x1.01a37cp-7f, vlmax);
 
+    const vfloat32m2_t zero = __riscv_vfmv_v_f_f32m2(0.0f, vlmax);
+    const vfloat32m2_t inf = __riscv_vfmv_v_f_f32m2(HUGE_VALF, vlmax);
+    const vfloat32m2_t pi_4 = __riscv_vfmv_v_f_f32m2(0x1.921fb6p-1f, vlmax);      // π/4
+    const vfloat32m2_t three_pi_4 = __riscv_vfmv_v_f_f32m2(0x1.2d97c8p1f, vlmax); // 3π/4
+
     size_t n = num_points;
     for (size_t vl; n > 0; n -= vl, inputVector += vl, outputVector += vl) {
         vl = __riscv_vsetvl_e32m2(n);
         vfloat32m2x2_t v = __riscv_vlseg2e32_v_f32m2x2((const float*)inputVector, vl);
         vfloat32m2_t vr = __riscv_vget_f32m2(v, 0), vi = __riscv_vget_f32m2(v, 1);
-        vbool16_t mswap = __riscv_vmfgt(__riscv_vfabs(vi, vl), __riscv_vfabs(vr, vl), vl);
-        vfloat32m2_t x = __riscv_vfdiv(
-            __riscv_vmerge(vi, vr, mswap, vl), __riscv_vmerge(vr, vi, mswap, vl), vl);
-        vbool16_t mnan = __riscv_vmsgtu(__riscv_vfclass(x, vl), 0xFF, vl);
-        x = __riscv_vreinterpret_f32m2(
-            __riscv_vmerge(__riscv_vreinterpret_u32m2(x), 0, mnan, vl));
+
+        // Detect NaN in original inputs before division
+        vbool16_t input_nan_mask =
+            __riscv_vmor(__riscv_vmfne(vr, vr, vl), __riscv_vmfne(vi, vi, vl), vl);
+
+        // Handle infinity cases per IEEE 754
+        vfloat32m2_t vr_abs = __riscv_vfabs(vr, vl);
+        vfloat32m2_t vi_abs = __riscv_vfabs(vi, vl);
+        vbool16_t vr_inf_mask = __riscv_vmfeq(vr_abs, inf, vl); // |vr| == inf
+        vbool16_t vi_inf_mask = __riscv_vmfeq(vi_abs, inf, vl); // |vi| == inf
+        vbool16_t vr_pos_mask = __riscv_vmfgt(vr, zero, vl);
+
+        // Build infinity result
+        vfloat32m2_t inf_result = zero;
+        // Both infinite: ±π/4 or ±3π/4
+        vbool16_t both_inf = __riscv_vmand(vi_inf_mask, vr_inf_mask, vl);
+        vfloat32m2_t both_inf_result = __riscv_vmerge(three_pi_4, pi_4, vr_pos_mask, vl);
+        both_inf_result = __riscv_vfsgnj(both_inf_result, vi, vl); // Copy sign from vi
+        inf_result = __riscv_vmerge(inf_result, both_inf_result, both_inf, vl);
+
+        // vi infinite, vr finite: ±π/2
+        vbool16_t vi_inf_only = __riscv_vmandn(vi_inf_mask, vr_inf_mask, vl);
+        vfloat32m2_t vi_inf_result = __riscv_vfsgnj(cpio2, vi, vl); // π/2 with sign of vi
+        inf_result = __riscv_vmerge(inf_result, vi_inf_result, vi_inf_only, vl);
+
+        // vr infinite, vi finite: 0 or ±π
+        vbool16_t vr_inf_only = __riscv_vmandn(vr_inf_mask, vi_inf_mask, vl);
+        vfloat32m2_t vr_inf_result =
+            __riscv_vmerge(__riscv_vfsgnj(cpi, vi, vl),  // π with sign of vi
+                           __riscv_vfsgnj(zero, vi, vl), // 0 with sign of vi
+                           vr_pos_mask,
+                           vl);
+        inf_result = __riscv_vmerge(inf_result, vr_inf_result, vr_inf_only, vl);
+
+        vbool16_t any_inf_mask = __riscv_vmor(vi_inf_mask, vr_inf_mask, vl);
+
+        vbool16_t mswap = __riscv_vmfgt(vi_abs, vr_abs, vl);
+        vfloat32m2_t numerator = __riscv_vmerge(vi, vr, mswap, vl);
+        vfloat32m2_t denominator = __riscv_vmerge(vr, vi, mswap, vl);
+        vfloat32m2_t x = __riscv_vfdiv(numerator, denominator, vl);
+
+        // Only handle NaN from division (0/0, inf/inf), not from NaN inputs
+        // Replace with numerator to preserve sign (e.g., atan2(-0, 0) = -0)
+        vbool16_t x_nan_mask = __riscv_vmfne(x, x, vl);
+        // div_nan_mask = x_nan_mask & ~input_nan_mask (vmandn computes vs2 & ~vs1)
+        vbool16_t div_nan_mask = __riscv_vmandn(x_nan_mask, input_nan_mask, vl);
+        x = __riscv_vmerge(x, numerator, div_nan_mask, vl);
 
         vfloat32m2_t xx = __riscv_vfmul(x, x, vl);
         vfloat32m2_t p = c13;
@@ -447,6 +1203,9 @@ static inline void volk_32fc_s32f_atan2_32f_rvvseg(float* outputVector,
         p = __riscv_vmerge(p, x, mswap, vl);
         p = __riscv_vfadd_mu(
             RISCV_VMFLTZ(32m2, vr, vl), p, p, __riscv_vfsgnjx(cpi, vi, vl), vl);
+
+        // Select infinity result or normal result
+        p = __riscv_vmerge(p, inf_result, any_inf_mask, vl);
 
         __riscv_vse32(outputVector, __riscv_vfmul(p, norm, vl), vl);
     }

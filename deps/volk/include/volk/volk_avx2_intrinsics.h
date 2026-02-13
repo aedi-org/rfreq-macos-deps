@@ -18,6 +18,33 @@
 #include "volk/volk_avx_intrinsics.h"
 #include <immintrin.h>
 
+/*
+ * Newton-Raphson refined reciprocal square root: 1/sqrt(a)
+ * AVX2 version with native 256-bit integer operations for edge case handling
+ * Handles edge cases: +0 → +Inf, +Inf → 0
+ */
+static inline __m256 _mm256_rsqrt_nr_avx2(const __m256 a)
+{
+    const __m256 HALF = _mm256_set1_ps(0.5f);
+    const __m256 THREE_HALFS = _mm256_set1_ps(1.5f);
+
+    const __m256 x0 = _mm256_rsqrt_ps(a); // +Inf for +0, 0 for +Inf
+
+    // Newton-Raphson: x1 = x0 * (1.5 - 0.5 * a * x0^2)
+    __m256 x1 = _mm256_mul_ps(
+        x0,
+        _mm256_sub_ps(THREE_HALFS,
+                      _mm256_mul_ps(HALF, _mm256_mul_ps(_mm256_mul_ps(x0, x0), a))));
+
+    // For +0 and +Inf inputs, x0 is correct but NR produces NaN due to Inf*0
+    // AVX2: native 256-bit integer compare
+    __m256i a_si = _mm256_castps_si256(a);
+    __m256i zero_mask = _mm256_cmpeq_epi32(a_si, _mm256_setzero_si256());
+    __m256i inf_mask = _mm256_cmpeq_epi32(a_si, _mm256_set1_epi32(0x7F800000));
+    __m256 special_mask = _mm256_castsi256_ps(_mm256_or_si256(zero_mask, inf_mask));
+    return _mm256_blendv_ps(x1, x0, special_mask);
+}
+
 static inline __m256 _mm256_real(const __m256 z1, const __m256 z2)
 {
     const __m256i permute_mask = _mm256_set_epi32(7, 6, 3, 2, 5, 4, 1, 0);
@@ -343,6 +370,77 @@ static inline void vector_32fc_index_min_variant1(__m256 in0,
                                              compare_mask));
 
     *current_indices = _mm256_add_epi32(*current_indices, indices_increment);
+}
+
+/*
+ * Approximate sin(x) via polynomial expansion
+ * on the interval [-pi/4, pi/4]
+ *
+ * Maximum absolute error ~7.3e-9
+ * sin(x) = x + x^3 * (s1 + x^2 * (s2 + x^2 * s3))
+ */
+static inline __m256 _mm256_sin_poly_avx2(const __m256 x)
+{
+    const __m256 s1 = _mm256_set1_ps(-0x1.555552p-3f);
+    const __m256 s2 = _mm256_set1_ps(+0x1.110be2p-7f);
+    const __m256 s3 = _mm256_set1_ps(-0x1.9ab22ap-13f);
+
+    const __m256 x2 = _mm256_mul_ps(x, x);
+    const __m256 x3 = _mm256_mul_ps(x2, x);
+
+    __m256 poly = _mm256_add_ps(_mm256_mul_ps(x2, s3), s2);
+    poly = _mm256_add_ps(_mm256_mul_ps(x2, poly), s1);
+    return _mm256_add_ps(_mm256_mul_ps(x3, poly), x);
+}
+
+/*
+ * Approximate cos(x) via polynomial expansion
+ * on the interval [-pi/4, pi/4]
+ *
+ * Maximum absolute error ~1.1e-7
+ * cos(x) = 1 + x^2 * (c1 + x^2 * (c2 + x^2 * c3))
+ */
+static inline __m256 _mm256_cos_poly_avx2(const __m256 x)
+{
+    const __m256 c1 = _mm256_set1_ps(-0x1.fffff4p-2f);
+    const __m256 c2 = _mm256_set1_ps(+0x1.554a46p-5f);
+    const __m256 c3 = _mm256_set1_ps(-0x1.661be2p-10f);
+    const __m256 one = _mm256_set1_ps(1.0f);
+
+    const __m256 x2 = _mm256_mul_ps(x, x);
+
+    __m256 poly = _mm256_add_ps(_mm256_mul_ps(x2, c3), c2);
+    poly = _mm256_add_ps(_mm256_mul_ps(x2, poly), c1);
+    return _mm256_add_ps(_mm256_mul_ps(x2, poly), one);
+}
+
+/*
+ * Polynomial coefficients for log2(x)/(x-1) on [1, 2]
+ * Generated with Sollya: remez(log2(x)/(x-1), 6, [1+1b-20, 2])
+ * Max error: ~1.55e-6
+ *
+ * Usage: log2(x) ≈ poly(x) * (x - 1) for x ∈ [1, 2]
+ * Polynomial evaluated via Horner's method
+ */
+static inline __m256 _mm256_log2_poly_avx2(const __m256 x)
+{
+    const __m256 c0 = _mm256_set1_ps(+0x1.a8a726p+1f);
+    const __m256 c1 = _mm256_set1_ps(-0x1.0b7f7ep+2f);
+    const __m256 c2 = _mm256_set1_ps(+0x1.05d9ccp+2f);
+    const __m256 c3 = _mm256_set1_ps(-0x1.4d476cp+1f);
+    const __m256 c4 = _mm256_set1_ps(+0x1.04fc3ap+0f);
+    const __m256 c5 = _mm256_set1_ps(-0x1.c97982p-3f);
+    const __m256 c6 = _mm256_set1_ps(+0x1.57aa42p-6f);
+
+    // Horner's method: c0 + x*(c1 + x*(c2 + ...))
+    __m256 poly = c6;
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c5);
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c4);
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c3);
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c2);
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c1);
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c0);
+    return poly;
 }
 
 #endif /* INCLUDE_VOLK_VOLK_AVX2_INTRINSICS_H_ */

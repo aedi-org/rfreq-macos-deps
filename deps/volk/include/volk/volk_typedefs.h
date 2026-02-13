@@ -24,6 +24,7 @@ typedef void (*p_16i_max_star_16i)(short* , short* , unsigned int );
 typedef void (*p_16i_max_star_horizontal_16i)(int16_t* , int16_t* , unsigned int );
 typedef void (*p_16i_permute_and_scalar_add)(short* , short* , short* , short* , short* , short* , short* , short* , unsigned int );
 typedef void (*p_16i_s32f_convert_32f)(float* , const int16_t* , const float , unsigned int );
+typedef void (*p_16i_x2_add_saturated_16i)(int16_t* , const int16_t* , const int16_t* , unsigned int );
 typedef void (*p_16i_x4_quad_max_star_16i)(short* , short* , short* , short* , short* , unsigned int );
 typedef void (*p_16i_x5_add_quad_16i_x4)(short* , short* , short* , short* , short* , short* , short* , short* , short* , unsigned int );
 typedef void (*p_16ic_convert_32fc)(lv_32fc_t* , const lv_16sc_t* , unsigned int );
@@ -38,6 +39,7 @@ typedef void (*p_16ic_x2_dot_prod_16ic)(lv_16sc_t* , const lv_16sc_t* , const lv
 typedef void (*p_16ic_x2_multiply_16ic)(lv_16sc_t* , const lv_16sc_t* , const lv_16sc_t* , unsigned int );
 typedef void (*p_16u_byteswap)(uint16_t* , unsigned int );
 typedef void (*p_16u_byteswappuppet_16u)(uint16_t* , uint16_t* , unsigned int );
+typedef void (*p_16u_x2_add_saturated_16u)(uint16_t* , const uint16_t* , const uint16_t* , unsigned int );
 typedef void (*p_32f_64f_add_64f)(double* , const float* , const double* , unsigned int );
 typedef void (*p_32f_64f_multiply_64f)(double* , const float* , const double* , unsigned int );
 typedef void (*p_32f_8u_polarbutterfly_32f)(float* , unsigned char* , const int , const int , const int , const int );
@@ -77,6 +79,7 @@ typedef void (*p_32f_s32f_stddev_32f)(float* , const float* , const float , unsi
 typedef void (*p_32f_s32f_x2_clamp_32f)(float* , const float* , const float , const float , unsigned int );
 typedef void (*p_32f_s32f_x2_convert_8u)(uint8_t* , const float* , const float , const float , unsigned int );
 typedef void (*p_32f_sin_32f)(float* , const float* , unsigned int );
+typedef void (*p_32f_sincos_32f_x2)(float* , float* , const float* , unsigned int );
 typedef void (*p_32f_sqrt_32f)(float* , const float* , unsigned int );
 typedef void (*p_32f_stddev_and_mean_32f_x2)(float* , float* , const float* , unsigned int );
 typedef void (*p_32f_tan_32f)(float* , const float* , unsigned int );
@@ -144,6 +147,7 @@ typedef void (*p_32u_popcntpuppet_32u)(uint32_t* , const uint32_t* , unsigned in
 typedef void (*p_32u_reverse_32u)(uint32_t* , const uint32_t* , unsigned int );
 typedef void (*p_64f_convert_32f)(float* , const double* , unsigned int );
 typedef void (*p_64f_x2_add_64f)(double* , const double* , const double* , unsigned int );
+typedef void (*p_64f_x2_dot_prod_64f)(double* , const double* , const double* , unsigned int );
 typedef void (*p_64f_x2_max_64f)(double* , const double* , const double* , unsigned int );
 typedef void (*p_64f_x2_min_64f)(double* , const double* , const double* , unsigned int );
 typedef void (*p_64f_x2_multiply_64f)(double* , const double* , const double* , unsigned int );
@@ -153,6 +157,7 @@ typedef void (*p_64u_popcnt)(uint64_t* , const uint64_t );
 typedef void (*p_64u_popcntpuppet_64u)(uint64_t* , const uint64_t* , unsigned int );
 typedef void (*p_8i_convert_16i)(int16_t* , const int8_t* , unsigned int );
 typedef void (*p_8i_s32f_convert_32f)(float* , const int8_t* , const float , unsigned int );
+typedef void (*p_8i_x2_add_saturated_8i)(int8_t* , const int8_t* , const int8_t* , unsigned int );
 typedef void (*p_8ic_deinterleave_16i_x2)(int16_t* , int16_t* , const lv_8sc_t* , unsigned int );
 typedef void (*p_8ic_deinterleave_real_16i)(int16_t* , const lv_8sc_t* , unsigned int );
 typedef void (*p_8ic_deinterleave_real_8i)(int8_t* , const lv_8sc_t* , unsigned int );
@@ -161,6 +166,7 @@ typedef void (*p_8ic_s32f_deinterleave_real_32f)(float* , const lv_8sc_t* , cons
 typedef void (*p_8ic_x2_multiply_conjugate_16ic)(lv_16sc_t* , const lv_8sc_t* , const lv_8sc_t* , unsigned int );
 typedef void (*p_8ic_x2_s32f_multiply_conjugate_32fc)(lv_32fc_t* , const lv_8sc_t* , const lv_8sc_t* , const float , unsigned int );
 typedef void (*p_8u_conv_k7_r2puppet_8u)(unsigned char* , unsigned char* , unsigned int );
+typedef void (*p_8u_x2_add_saturated_8u)(uint8_t* , const uint8_t* , const uint8_t* , unsigned int );
 typedef void (*p_8u_x2_encodeframepolar_8u)(unsigned char* , unsigned char* , unsigned int );
 typedef void (*p_8u_x3_encodepolar_8u_x2)(unsigned char* , unsigned char* , const unsigned char* , const unsigned char* , const unsigned char* , unsigned int );
 typedef void (*p_8u_x3_encodepolarpuppet_8u)(unsigned char* , unsigned char* , const unsigned char* , const unsigned char* , unsigned int );

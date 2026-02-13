@@ -157,6 +157,65 @@ static inline void volk_32f_s32f_convert_8i_u_avx2(int8_t* outputVector,
 
 #endif /* LV_HAVE_AVX2 */
 
+#ifdef LV_HAVE_AVX512F
+#include <immintrin.h>
+
+static inline void volk_32f_s32f_convert_8i_u_avx512(int8_t* outputVector,
+                                                     const float* inputVector,
+                                                     const float scalar,
+                                                     unsigned int num_points)
+{
+    unsigned int number = 0;
+
+    const unsigned int thirtysecondPoints = num_points / 32;
+
+    const float* inputVectorPtr = (const float*)inputVector;
+    int8_t* outputVectorPtr = outputVector;
+
+    float min_val = INT8_MIN;
+    float max_val = INT8_MAX;
+    float r;
+
+    __m512 vScalar = _mm512_set1_ps(scalar);
+    __m512 inputVal1, inputVal2;
+    __m512i intInputVal1, intInputVal2;
+    __m512 vmin_val = _mm512_set1_ps(min_val);
+    __m512 vmax_val = _mm512_set1_ps(max_val);
+    __m128i packed_result;
+
+    for (; number < thirtysecondPoints; number++) {
+        inputVal1 = _mm512_loadu_ps(inputVectorPtr);
+        inputVectorPtr += 16;
+        inputVal2 = _mm512_loadu_ps(inputVectorPtr);
+        inputVectorPtr += 16;
+
+        inputVal1 = _mm512_max_ps(
+            _mm512_min_ps(_mm512_mul_ps(inputVal1, vScalar), vmax_val), vmin_val);
+        inputVal2 = _mm512_max_ps(
+            _mm512_min_ps(_mm512_mul_ps(inputVal2, vScalar), vmax_val), vmin_val);
+
+        intInputVal1 = _mm512_cvtps_epi32(inputVal1);
+        intInputVal2 = _mm512_cvtps_epi32(inputVal2);
+
+        // Pack int32 -> int16 -> int8
+        packed_result = _mm512_cvtsepi32_epi8(intInputVal1);
+        _mm_storeu_si128((__m128i*)outputVectorPtr, packed_result);
+        outputVectorPtr += 16;
+
+        packed_result = _mm512_cvtsepi32_epi8(intInputVal2);
+        _mm_storeu_si128((__m128i*)outputVectorPtr, packed_result);
+        outputVectorPtr += 16;
+    }
+
+    number = thirtysecondPoints * 32;
+    for (; number < num_points; number++) {
+        r = inputVector[number] * scalar;
+        volk_32f_s32f_convert_8i_single(&outputVector[number], r);
+    }
+}
+
+#endif /* LV_HAVE_AVX512F */
+
 
 #ifdef LV_HAVE_SSE2
 #include <emmintrin.h>
@@ -333,6 +392,65 @@ static inline void volk_32f_s32f_convert_8i_a_avx2(int8_t* outputVector,
 
 #endif /* LV_HAVE_AVX2 */
 
+#ifdef LV_HAVE_AVX512F
+#include <immintrin.h>
+
+static inline void volk_32f_s32f_convert_8i_a_avx512(int8_t* outputVector,
+                                                     const float* inputVector,
+                                                     const float scalar,
+                                                     unsigned int num_points)
+{
+    unsigned int number = 0;
+
+    const unsigned int thirtysecondPoints = num_points / 32;
+
+    const float* inputVectorPtr = (const float*)inputVector;
+    int8_t* outputVectorPtr = outputVector;
+
+    float min_val = INT8_MIN;
+    float max_val = INT8_MAX;
+    float r;
+
+    __m512 vScalar = _mm512_set1_ps(scalar);
+    __m512 inputVal1, inputVal2;
+    __m512i intInputVal1, intInputVal2;
+    __m512 vmin_val = _mm512_set1_ps(min_val);
+    __m512 vmax_val = _mm512_set1_ps(max_val);
+    __m128i packed_result;
+
+    for (; number < thirtysecondPoints; number++) {
+        inputVal1 = _mm512_load_ps(inputVectorPtr);
+        inputVectorPtr += 16;
+        inputVal2 = _mm512_load_ps(inputVectorPtr);
+        inputVectorPtr += 16;
+
+        inputVal1 = _mm512_max_ps(
+            _mm512_min_ps(_mm512_mul_ps(inputVal1, vScalar), vmax_val), vmin_val);
+        inputVal2 = _mm512_max_ps(
+            _mm512_min_ps(_mm512_mul_ps(inputVal2, vScalar), vmax_val), vmin_val);
+
+        intInputVal1 = _mm512_cvtps_epi32(inputVal1);
+        intInputVal2 = _mm512_cvtps_epi32(inputVal2);
+
+        // Pack int32 -> int16 -> int8
+        packed_result = _mm512_cvtsepi32_epi8(intInputVal1);
+        _mm_store_si128((__m128i*)outputVectorPtr, packed_result);
+        outputVectorPtr += 16;
+
+        packed_result = _mm512_cvtsepi32_epi8(intInputVal2);
+        _mm_store_si128((__m128i*)outputVectorPtr, packed_result);
+        outputVectorPtr += 16;
+    }
+
+    number = thirtysecondPoints * 32;
+    for (; number < num_points; number++) {
+        r = inputVector[number] * scalar;
+        volk_32f_s32f_convert_8i_single(&outputVector[number], r);
+    }
+}
+
+#endif /* LV_HAVE_AVX512F */
+
 
 #ifdef LV_HAVE_SSE2
 #include <emmintrin.h>
@@ -436,6 +554,189 @@ static inline void volk_32f_s32f_convert_8i_a_sse(int8_t* outputVector,
 }
 
 #endif /* LV_HAVE_SSE */
+
+
+#ifdef LV_HAVE_NEON
+#include <arm_neon.h>
+
+static inline void volk_32f_s32f_convert_8i_neon(int8_t* outputVector,
+                                                 const float* inputVector,
+                                                 const float scalar,
+                                                 unsigned int num_points)
+{
+    unsigned int number = 0;
+    const unsigned int sixteenthPoints = num_points / 16;
+
+    const float* inputVectorPtr = inputVector;
+    int8_t* outputVectorPtr = outputVector;
+
+    const float min_val = INT8_MIN;
+    const float max_val = INT8_MAX;
+
+    float32x4_t vScalar = vdupq_n_f32(scalar);
+    float32x4_t vmin_val = vdupq_n_f32(min_val);
+    float32x4_t vmax_val = vdupq_n_f32(max_val);
+    float32x4_t half = vdupq_n_f32(0.5f);
+    float32x4_t neg_half = vdupq_n_f32(-0.5f);
+    float32x4_t zero = vdupq_n_f32(0.0f);
+
+    for (; number < sixteenthPoints; number++) {
+        float32x4_t inputVal0 = vld1q_f32(inputVectorPtr);
+        float32x4_t inputVal1 = vld1q_f32(inputVectorPtr + 4);
+        float32x4_t inputVal2 = vld1q_f32(inputVectorPtr + 8);
+        float32x4_t inputVal3 = vld1q_f32(inputVectorPtr + 12);
+        inputVectorPtr += 16;
+
+        // Scale and clip
+        float32x4_t ret0 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal0, vScalar), vmax_val), vmin_val);
+        float32x4_t ret1 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal1, vScalar), vmax_val), vmin_val);
+        float32x4_t ret2 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal2, vScalar), vmax_val), vmin_val);
+        float32x4_t ret3 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal3, vScalar), vmax_val), vmin_val);
+
+        // Round to nearest: add copysign(0.5, x) before truncating
+        uint32x4_t neg0 = vcltq_f32(ret0, zero);
+        uint32x4_t neg1 = vcltq_f32(ret1, zero);
+        uint32x4_t neg2 = vcltq_f32(ret2, zero);
+        uint32x4_t neg3 = vcltq_f32(ret3, zero);
+        ret0 = vaddq_f32(ret0, vbslq_f32(neg0, neg_half, half));
+        ret1 = vaddq_f32(ret1, vbslq_f32(neg1, neg_half, half));
+        ret2 = vaddq_f32(ret2, vbslq_f32(neg2, neg_half, half));
+        ret3 = vaddq_f32(ret3, vbslq_f32(neg3, neg_half, half));
+
+        // Convert to int32 (truncates towards zero, but we pre-rounded)
+        int32x4_t intVal0 = vcvtq_s32_f32(ret0);
+        int32x4_t intVal1 = vcvtq_s32_f32(ret1);
+        int32x4_t intVal2 = vcvtq_s32_f32(ret2);
+        int32x4_t intVal3 = vcvtq_s32_f32(ret3);
+
+        // Narrow to int16 with saturation
+        int16x4_t narrow16_0 = vqmovn_s32(intVal0);
+        int16x4_t narrow16_1 = vqmovn_s32(intVal1);
+        int16x4_t narrow16_2 = vqmovn_s32(intVal2);
+        int16x4_t narrow16_3 = vqmovn_s32(intVal3);
+        int16x8_t wide16_0 = vcombine_s16(narrow16_0, narrow16_1);
+        int16x8_t wide16_1 = vcombine_s16(narrow16_2, narrow16_3);
+
+        // Narrow to int8 with saturation
+        int8x8_t narrow8_0 = vqmovn_s16(wide16_0);
+        int8x8_t narrow8_1 = vqmovn_s16(wide16_1);
+        int8x16_t result = vcombine_s8(narrow8_0, narrow8_1);
+
+        vst1q_s8(outputVectorPtr, result);
+        outputVectorPtr += 16;
+    }
+
+    number = sixteenthPoints * 16;
+    for (; number < num_points; number++) {
+        float r = inputVector[number] * scalar;
+        volk_32f_s32f_convert_8i_single(&outputVector[number], r);
+    }
+}
+#endif /* LV_HAVE_NEON */
+
+
+#ifdef LV_HAVE_NEONV8
+#include <arm_neon.h>
+
+static inline void volk_32f_s32f_convert_8i_neonv8(int8_t* outputVector,
+                                                   const float* inputVector,
+                                                   const float scalar,
+                                                   unsigned int num_points)
+{
+    unsigned int number = 0;
+    const unsigned int thirtysecondPoints = num_points / 32;
+
+    const float* inputVectorPtr = inputVector;
+    int8_t* outputVectorPtr = outputVector;
+
+    const float min_val = INT8_MIN;
+    const float max_val = INT8_MAX;
+
+    float32x4_t vScalar = vdupq_n_f32(scalar);
+    float32x4_t vmin_val = vdupq_n_f32(min_val);
+    float32x4_t vmax_val = vdupq_n_f32(max_val);
+
+    for (; number < thirtysecondPoints; number++) {
+        float32x4_t inputVal0 = vld1q_f32(inputVectorPtr);
+        float32x4_t inputVal1 = vld1q_f32(inputVectorPtr + 4);
+        float32x4_t inputVal2 = vld1q_f32(inputVectorPtr + 8);
+        float32x4_t inputVal3 = vld1q_f32(inputVectorPtr + 12);
+        float32x4_t inputVal4 = vld1q_f32(inputVectorPtr + 16);
+        float32x4_t inputVal5 = vld1q_f32(inputVectorPtr + 20);
+        float32x4_t inputVal6 = vld1q_f32(inputVectorPtr + 24);
+        float32x4_t inputVal7 = vld1q_f32(inputVectorPtr + 28);
+        __VOLK_PREFETCH(inputVectorPtr + 32);
+        inputVectorPtr += 32;
+
+        // Scale and clip
+        float32x4_t ret0 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal0, vScalar), vmax_val), vmin_val);
+        float32x4_t ret1 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal1, vScalar), vmax_val), vmin_val);
+        float32x4_t ret2 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal2, vScalar), vmax_val), vmin_val);
+        float32x4_t ret3 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal3, vScalar), vmax_val), vmin_val);
+        float32x4_t ret4 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal4, vScalar), vmax_val), vmin_val);
+        float32x4_t ret5 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal5, vScalar), vmax_val), vmin_val);
+        float32x4_t ret6 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal6, vScalar), vmax_val), vmin_val);
+        float32x4_t ret7 =
+            vmaxq_f32(vminq_f32(vmulq_f32(inputVal7, vScalar), vmax_val), vmin_val);
+
+        // Convert to int32 using round-to-nearest (ARMv8)
+        int32x4_t intVal0 = vcvtnq_s32_f32(ret0);
+        int32x4_t intVal1 = vcvtnq_s32_f32(ret1);
+        int32x4_t intVal2 = vcvtnq_s32_f32(ret2);
+        int32x4_t intVal3 = vcvtnq_s32_f32(ret3);
+        int32x4_t intVal4 = vcvtnq_s32_f32(ret4);
+        int32x4_t intVal5 = vcvtnq_s32_f32(ret5);
+        int32x4_t intVal6 = vcvtnq_s32_f32(ret6);
+        int32x4_t intVal7 = vcvtnq_s32_f32(ret7);
+
+        // Narrow to int16 with saturation
+        int16x4_t narrow16_0 = vqmovn_s32(intVal0);
+        int16x4_t narrow16_1 = vqmovn_s32(intVal1);
+        int16x4_t narrow16_2 = vqmovn_s32(intVal2);
+        int16x4_t narrow16_3 = vqmovn_s32(intVal3);
+        int16x4_t narrow16_4 = vqmovn_s32(intVal4);
+        int16x4_t narrow16_5 = vqmovn_s32(intVal5);
+        int16x4_t narrow16_6 = vqmovn_s32(intVal6);
+        int16x4_t narrow16_7 = vqmovn_s32(intVal7);
+
+        int16x8_t wide16_0 = vcombine_s16(narrow16_0, narrow16_1);
+        int16x8_t wide16_1 = vcombine_s16(narrow16_2, narrow16_3);
+        int16x8_t wide16_2 = vcombine_s16(narrow16_4, narrow16_5);
+        int16x8_t wide16_3 = vcombine_s16(narrow16_6, narrow16_7);
+
+        // Narrow to int8 with saturation
+        int8x8_t narrow8_0 = vqmovn_s16(wide16_0);
+        int8x8_t narrow8_1 = vqmovn_s16(wide16_1);
+        int8x8_t narrow8_2 = vqmovn_s16(wide16_2);
+        int8x8_t narrow8_3 = vqmovn_s16(wide16_3);
+
+        int8x16_t result0 = vcombine_s8(narrow8_0, narrow8_1);
+        int8x16_t result1 = vcombine_s8(narrow8_2, narrow8_3);
+
+        vst1q_s8(outputVectorPtr, result0);
+        vst1q_s8(outputVectorPtr + 16, result1);
+        outputVectorPtr += 32;
+    }
+
+    number = thirtysecondPoints * 32;
+    for (; number < num_points; number++) {
+        float r = inputVector[number] * scalar;
+        volk_32f_s32f_convert_8i_single(&outputVector[number], r);
+    }
+}
+#endif /* LV_HAVE_NEONV8 */
+
 
 #ifdef LV_HAVE_RVV
 #include <riscv_vector.h>

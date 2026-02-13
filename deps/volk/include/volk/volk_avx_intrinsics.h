@@ -1,7 +1,7 @@
 /* -*- c++ -*- */
 /*
  * Copyright 2015 Free Software Foundation, Inc.
- * Copyright 2023 Magnus Lundmark <magnuslundmark@gmail.com>
+ * Copyright 2023-2026 Magnus Lundmark <magnuslundmark@gmail.com>
  *
  * This file is part of VOLK
  *
@@ -9,7 +9,7 @@
  */
 
 /*
- * This file is intended to hold AVX intrinsics of intrinsics.
+ * This file is intended to hold AVX intrinsics.
  * They should be used in VOLK kernels to avoid copy-pasta.
  */
 
@@ -18,13 +18,50 @@
 #include <immintrin.h>
 
 /*
+ * Newton-Raphson refined reciprocal square root: 1/sqrt(a)
+ * One iteration doubles precision from ~12-bit to ~24-bit
+ * x1 = x0 * (1.5 - 0.5 * a * x0^2)
+ * Handles edge cases: +0 → +Inf, +Inf → 0
+ */
+static inline __m256 _mm256_rsqrt_nr_ps(const __m256 a)
+{
+    const __m256 HALF = _mm256_set1_ps(0.5f);
+    const __m256 THREE_HALFS = _mm256_set1_ps(1.5f);
+
+    const __m256 x0 = _mm256_rsqrt_ps(a); // +Inf for +0, 0 for +Inf
+
+    // Newton-Raphson: x1 = x0 * (1.5 - 0.5 * a * x0^2)
+    __m256 x1 = _mm256_mul_ps(
+        x0,
+        _mm256_sub_ps(THREE_HALFS,
+                      _mm256_mul_ps(HALF, _mm256_mul_ps(_mm256_mul_ps(x0, x0), a))));
+
+    // For +0 and +Inf inputs, x0 is correct but NR produces NaN due to Inf*0
+    // Blend: use x0 where a == +0 or a == +Inf, else use x1
+    // AVX-only: use SSE2 integer compare, then reconstruct AVX mask
+    __m128i a_lo = _mm256_castsi256_si128(_mm256_castps_si256(a));
+    __m128i a_hi = _mm_castps_si128(_mm256_extractf128_ps(a, 1));
+    __m128i zero_si = _mm_setzero_si128();
+    __m128i inf_si = _mm_set1_epi32(0x7F800000);
+    __m128i zero_mask_lo = _mm_cmpeq_epi32(a_lo, zero_si);
+    __m128i zero_mask_hi = _mm_cmpeq_epi32(a_hi, zero_si);
+    __m128i inf_mask_lo = _mm_cmpeq_epi32(a_lo, inf_si);
+    __m128i inf_mask_hi = _mm_cmpeq_epi32(a_hi, inf_si);
+    __m128 mask_lo = _mm_castsi128_ps(_mm_or_si128(zero_mask_lo, inf_mask_lo));
+    __m128 mask_hi = _mm_castsi128_ps(_mm_or_si128(zero_mask_hi, inf_mask_hi));
+    __m256 special_mask =
+        _mm256_insertf128_ps(_mm256_castps128_ps256(mask_lo), mask_hi, 1);
+    return _mm256_blendv_ps(x1, x0, special_mask);
+}
+
+/*
  * Approximate arctan(x) via polynomial expansion
  * on the interval [-1, 1]
  *
  * Maximum relative error ~6.5e-7
  * Polynomial evaluated via Horner's method
  */
-static inline __m256 _m256_arctan_poly_avx(const __m256 x)
+static inline __m256 _mm256_arctan_poly_avx(const __m256 x)
 {
     const __m256 a1 = _mm256_set1_ps(+0x1.ffffeap-1f);
     const __m256 a3 = _mm256_set1_ps(-0x1.55437p-2f);
@@ -52,6 +89,32 @@ static inline __m256 _m256_arctan_poly_avx(const __m256 x)
     arctan = _mm256_mul_ps(x, arctan);
 
     return arctan;
+}
+
+/*
+ * Approximate arcsin(x) via polynomial expansion
+ * P(u) such that asin(x) = x * P(x^2) on |x| <= 0.5
+ *
+ * Maximum relative error ~1.5e-6
+ * Polynomial evaluated via Horner's method
+ */
+static inline __m256 _mm256_arcsin_poly_avx(const __m256 x)
+{
+    const __m256 c0 = _mm256_set1_ps(0x1.ffffcep-1f);
+    const __m256 c1 = _mm256_set1_ps(0x1.55b648p-3f);
+    const __m256 c2 = _mm256_set1_ps(0x1.24d192p-4f);
+    const __m256 c3 = _mm256_set1_ps(0x1.0a788p-4f);
+
+    const __m256 u = _mm256_mul_ps(x, x);
+    __m256 p = c3;
+    p = _mm256_mul_ps(u, p);
+    p = _mm256_add_ps(p, c2);
+    p = _mm256_mul_ps(u, p);
+    p = _mm256_add_ps(p, c1);
+    p = _mm256_mul_ps(u, p);
+    p = _mm256_add_ps(p, c0);
+
+    return _mm256_mul_ps(x, p);
 }
 
 static inline __m256 _mm256_complexmul_ps(__m256 x, __m256 y)
@@ -228,6 +291,35 @@ static inline __m256 _mm256_accumulate_square_sum_ps(
     aux = _mm256_mul_ps(aux, aux);
     aux = _mm256_mul_ps(aux, rec);
     return _mm256_add_ps(sq_acc, aux);
+}
+
+/*
+ * Polynomial coefficients for log2(x)/(x-1) on [1, 2]
+ * Generated with Sollya: remez(log2(x)/(x-1), 6, [1+1b-20, 2])
+ * Max error: ~1.55e-6
+ *
+ * Usage: log2(x) ≈ poly(x) * (x - 1) for x ∈ [1, 2]
+ * Polynomial evaluated via Horner's method
+ */
+static inline __m256 _mm256_log2_poly_avx(const __m256 x)
+{
+    const __m256 c0 = _mm256_set1_ps(+0x1.a8a726p+1f);
+    const __m256 c1 = _mm256_set1_ps(-0x1.0b7f7ep+2f);
+    const __m256 c2 = _mm256_set1_ps(+0x1.05d9ccp+2f);
+    const __m256 c3 = _mm256_set1_ps(-0x1.4d476cp+1f);
+    const __m256 c4 = _mm256_set1_ps(+0x1.04fc3ap+0f);
+    const __m256 c5 = _mm256_set1_ps(-0x1.c97982p-3f);
+    const __m256 c6 = _mm256_set1_ps(+0x1.57aa42p-6f);
+
+    // Horner's method: c0 + x*(c1 + x*(c2 + ...))
+    __m256 poly = c6;
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c5);
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c4);
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c3);
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c2);
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c1);
+    poly = _mm256_add_ps(_mm256_mul_ps(poly, x), c0);
+    return poly;
 }
 
 #endif /* INCLUDE_VOLK_VOLK_AVX_INTRINSICS_H_ */

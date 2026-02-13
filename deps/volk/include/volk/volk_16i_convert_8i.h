@@ -85,6 +85,50 @@ static inline void volk_16i_convert_8i_u_avx2(int8_t* outputVector,
 }
 #endif /* LV_HAVE_AVX2 */
 
+#ifdef LV_HAVE_AVX512BW
+#include <immintrin.h>
+
+static inline void volk_16i_convert_8i_u_avx512bw(int8_t* outputVector,
+                                                  const int16_t* inputVector,
+                                                  unsigned int num_points)
+{
+    unsigned int number = 0;
+    const unsigned int sixtyfourthPoints = num_points / 64;
+
+    int8_t* outputVectorPtr = outputVector;
+    int16_t* inputPtr = (int16_t*)inputVector;
+    __m512i inputVal1;
+    __m512i inputVal2;
+    __m512i shifted1, shifted2;
+    __m256i ret1, ret2;
+
+    for (; number < sixtyfourthPoints; number++) {
+
+        // Load 64 int16 values
+        inputVal1 = _mm512_loadu_si512((__m512i*)inputPtr);
+        inputPtr += 32;
+        inputVal2 = _mm512_loadu_si512((__m512i*)inputPtr);
+        inputPtr += 32;
+
+        shifted1 = _mm512_srai_epi16(inputVal1, 8);
+        shifted2 = _mm512_srai_epi16(inputVal2, 8);
+
+        ret1 = _mm512_cvtsepi16_epi8(shifted1);
+        ret2 = _mm512_cvtsepi16_epi8(shifted2);
+
+        _mm256_storeu_si256((__m256i*)outputVectorPtr, ret1);
+        outputVectorPtr += 32;
+        _mm256_storeu_si256((__m256i*)outputVectorPtr, ret2);
+        outputVectorPtr += 32;
+    }
+
+    number = sixtyfourthPoints * 64;
+    for (; number < num_points; number++) {
+        outputVector[number] = (int8_t)(inputVector[number] >> 8);
+    }
+}
+#endif /* LV_HAVE_AVX512BW */
+
 
 #ifdef LV_HAVE_SSE2
 #include <emmintrin.h>
@@ -194,6 +238,50 @@ static inline void volk_16i_convert_8i_a_avx2(int8_t* outputVector,
 }
 #endif /* LV_HAVE_AVX2 */
 
+#ifdef LV_HAVE_AVX512BW
+#include <immintrin.h>
+
+static inline void volk_16i_convert_8i_a_avx512bw(int8_t* outputVector,
+                                                  const int16_t* inputVector,
+                                                  unsigned int num_points)
+{
+    unsigned int number = 0;
+    const unsigned int sixtyfourthPoints = num_points / 64;
+
+    int8_t* outputVectorPtr = outputVector;
+    int16_t* inputPtr = (int16_t*)inputVector;
+    __m512i inputVal1;
+    __m512i inputVal2;
+    __m512i shifted1, shifted2;
+    __m256i ret1, ret2;
+
+    for (; number < sixtyfourthPoints; number++) {
+
+        // Load 64 int16 values
+        inputVal1 = _mm512_load_si512((__m512i*)inputPtr);
+        inputPtr += 32;
+        inputVal2 = _mm512_load_si512((__m512i*)inputPtr);
+        inputPtr += 32;
+
+        shifted1 = _mm512_srai_epi16(inputVal1, 8);
+        shifted2 = _mm512_srai_epi16(inputVal2, 8);
+
+        ret1 = _mm512_cvtsepi16_epi8(shifted1);
+        ret2 = _mm512_cvtsepi16_epi8(shifted2);
+
+        _mm256_store_si256((__m256i*)outputVectorPtr, ret1);
+        outputVectorPtr += 32;
+        _mm256_store_si256((__m256i*)outputVectorPtr, ret2);
+        outputVectorPtr += 32;
+    }
+
+    number = sixtyfourthPoints * 64;
+    for (; number < num_points; number++) {
+        outputVector[number] = (int8_t)(inputVector[number] >> 8);
+    }
+}
+#endif /* LV_HAVE_AVX512BW */
+
 
 #ifdef LV_HAVE_SSE2
 #include <emmintrin.h>
@@ -274,6 +362,42 @@ static inline void volk_16i_convert_8i_neon(int8_t* outputVector,
     }
 }
 #endif /* LV_HAVE_NEON */
+
+#ifdef LV_HAVE_NEONV8
+#include <arm_neon.h>
+
+static inline void volk_16i_convert_8i_neonv8(int8_t* outputVector,
+                                              const int16_t* inputVector,
+                                              unsigned int num_points)
+{
+    int8_t* outputVectorPtr = outputVector;
+    const int16_t* inputVectorPtr = inputVector;
+    const unsigned int thirtysecondPoints = num_points / 32;
+
+    for (unsigned int number = 0; number < thirtysecondPoints; number++) {
+        int16x8_t in0 = vld1q_s16(inputVectorPtr);
+        int16x8_t in1 = vld1q_s16(inputVectorPtr + 8);
+        int16x8_t in2 = vld1q_s16(inputVectorPtr + 16);
+        int16x8_t in3 = vld1q_s16(inputVectorPtr + 24);
+        __VOLK_PREFETCH(inputVectorPtr + 64);
+
+        int8x8_t out0 = vshrn_n_s16(in0, 8);
+        int8x8_t out1 = vshrn_n_s16(in1, 8);
+        int8x8_t out2 = vshrn_n_s16(in2, 8);
+        int8x8_t out3 = vshrn_n_s16(in3, 8);
+
+        vst1q_s8(outputVectorPtr, vcombine_s8(out0, out1));
+        vst1q_s8(outputVectorPtr + 16, vcombine_s8(out2, out3));
+
+        inputVectorPtr += 32;
+        outputVectorPtr += 32;
+    }
+
+    for (unsigned int number = thirtysecondPoints * 32; number < num_points; number++) {
+        *outputVectorPtr++ = ((int8_t)(*inputVectorPtr++ >> 8));
+    }
+}
+#endif /* LV_HAVE_NEONV8 */
 
 #ifdef LV_HAVE_RVV
 #include <riscv_vector.h>

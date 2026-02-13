@@ -38,8 +38,9 @@
 #define LV_AVX2 21
 #define LV_AVX512F 22
 #define LV_AVX512CD 23
-#define LV_RISCV64 24
-#define LV_RVV 25
-#define LV_RVVSEG 26
+#define LV_AVX512DQ 24
+#define LV_RISCV64 25
+#define LV_RVV 26
+#define LV_RVVSEG 27
 
 #endif /*INCLUDED_VOLK_CONFIG_FIXED*/
