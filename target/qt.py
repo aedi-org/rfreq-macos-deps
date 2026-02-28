@@ -72,5 +72,5 @@ class Qt6SvgTarget(_BaseQt6Target):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://download.qt.io/official_releases/qt/6.10/6.10.0/submodules/qtsvg-everywhere-src-6.10.0.tar.xz',
-            '5ed2c0e04d5e73ff75c2a2ed92db5dc1788ba70f704fc2b71bc21644beda2533')
+            'https://download.qt.io/official_releases/qt/6.10/6.10.2/submodules/qtsvg-everywhere-src-6.10.2.tar.xz',
+            'f07ff80f38caf235187200345392ca7479445ddf49a36c3694cd52a735dad6e1')
