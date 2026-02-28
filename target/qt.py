@@ -42,8 +42,8 @@ class Qt6BaseTarget(_BaseQt6Target):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://download.qt.io/official_releases/qt/6.10/6.10.0/submodules/qtbase-everywhere-src-6.10.0.tar.xz',
-            'ead4623bcb54a32257c5b3e3a5aec6d16ec96f4cda58d2e003f5a0c16f72046d')
+            'https://download.qt.io/official_releases/qt/6.10/6.10.2/submodules/qtbase-everywhere-src-6.10.2.tar.xz',
+            'aeb78d29291a2b5fd53cb55950f8f5065b4978c25fb1d77f627d695ab9adf21e')
 
     def configure(self, state):
         state.options['FEATURE_relocatable'] = 'YES'
