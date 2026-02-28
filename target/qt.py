@@ -59,8 +59,8 @@ class Qt6ChartsTarget(_BaseQt6Target):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://download.qt.io/official_releases/qt/6.10/6.10.0/submodules/qtcharts-everywhere-src-6.10.0.tar.xz',
-            '1bff529320e7bf4da19984d70492b19149168be58aa1e77b0868779fb3437f6b')
+            'https://download.qt.io/official_releases/qt/6.10/6.10.2/submodules/qtcharts-everywhere-src-6.10.2.tar.xz',
+            '405116b4c5eded981484c4c154eb392d44b69b587342f1193181175e309f2c00')
 
 
 class Qt6SvgTarget(_BaseQt6Target):
