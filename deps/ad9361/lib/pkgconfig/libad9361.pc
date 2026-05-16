@@ -1,12 +1,12 @@
 prefix=
 exec_prefix=${prefix}
-libdir=${exec_prefix}/lib
-sharedlibdir=${libdir}
+libdir=${prefix}/lib
+sharedlibdir=${prefix}/lib
 includedir=${prefix}/include
 
 Name: libad9361
 Description: Device specific library for AD936X transceivers
-Version: 0.2
+Version: 0.4
 
 Requires:
 Libs: -L${libdir} -L${sharedlibdir} -lad9361
