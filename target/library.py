@@ -44,11 +44,8 @@ class Ad9361Target(base.CMakeSharedDependencyTarget):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            # libad9361-iio v0.3 with addition of CMake option to disable macOS framework
-            # https://github.com/analogdevicesinc/libad9361-iio/commit/ef3d58506132072834637f887bc47eb4d0c52a73
-            # https://github.com/analogdevicesinc/libad9361-iio/commit/05fbfed2b2104645a6ebe262631bb35a09c73a37
-            'https://github.com/analogdevicesinc/libad9361-iio/archive/05fbfed2b2104645a6ebe262631bb35a09c73a37.tar.gz',
-            '10f7124ee77e5d1987733dce86c7d572917c16c69023d78a932298f8e8b22552')
+            'https://github.com/analogdevicesinc/libad9361-iio/archive/refs/tags/v0.4.0.tar.gz',
+            'f4976a1317a0b7cf84727d068be5a52c070539ca7301f0160b0677a429538d87')
 
     def configure(self, state: BuildState):
         state.options['OSX_FRAMEWORK'] = 'NO'
