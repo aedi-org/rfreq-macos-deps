@@ -274,8 +274,8 @@ class GlfwTarget(base.CMakeSharedDependencyTarget):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://github.com/glfw/glfw/archive/refs/tags/3.4.tar.gz',
-            'c038d34200234d071fae9345bc455e4a8f2f544ab60150765d7704e08f3dac01',
+            'https://github.com/glfw/glfw/archive/refs/tags/3.5.1.tar.gz',
+            '5234f4f29473e9a06bc7847d8371858dd135d38466eeeaa652fdc9f8f9ff0c20',
             patches='glfw-fix-vsync')
 
     def configure(self, state: BuildState):
