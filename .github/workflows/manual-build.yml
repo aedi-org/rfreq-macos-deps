@@ -23,7 +23,9 @@ on:
         options:
           - macos-14
           - macos-15
+          - macos-15-intel
           - macos-26
+          - macos-26-intel
       min-os-ver-intel:
         description: 'macOS deployment version for Intel'
         type: string
@@ -39,7 +41,7 @@ jobs:
     name: ${{ inputs.target }}
     runs-on: ${{ inputs.runner-os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: 'recursive'
 
@@ -71,7 +73,7 @@ jobs:
           ${BUILD_CMDLINE}
 
       - name: Upload Package
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.target }}
           path: |
