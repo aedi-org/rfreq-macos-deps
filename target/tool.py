@@ -105,10 +105,8 @@ class StlinkTarget(base.CMakeDependencyTarget):
 
     def prepare_source(self, state: BuildState):
         state.download_source(
-            'https://github.com/stlink-org/stlink/archive/refs/tags/v1.8.0.tar.gz',
-            'cff760b5c212c2cc480f705b9ca7f3828d6b9c267950c6a547002cd0a1f5f6ac',
-            # Build fix patch from https://github.com/stlink-org/stlink/pull/1373/commits
-            patches=('stlink-fix-build', 'stlink-relative-chips'))
+            'https://github.com/stlink-org/stlink/archive/refs/tags/v1.9.0.tar.gz',
+            '10d6c3bff3d5a7f6aefd00e096339822cafc65acf32e43c842369e346d2e5069')
 
     def configure(self, state: BuildState):
         if state.arguments.static_usb:
